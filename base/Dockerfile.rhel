@@ -4,8 +4,8 @@ RUN INSTALL_PKGS=" \
       socat findutils lsof bind-utils gzip \
       procps-ng \
       " && \
-    ln -s /usr/bin/microdnf /usr/bin/yum && \
-    yum install --setopt=tsflags=nodocs ${INSTALL_PKGS} && \
+    if [[ ! -e /usr/bin/yum ]]; then ln -s /usr/bin/microdnf /usr/bin/yum; fi && \
+    yum install -y --setopt=tsflags=nodocs ${INSTALL_PKGS} && \
     yum clean all && rm -rf /var/cache/*
 LABEL io.k8s.display-name="OpenShift Base" \
       io.k8s.description="This is the base image from which all OpenShift images inherit."
