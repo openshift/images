@@ -2,7 +2,7 @@ FROM registry.access.redhat.com/ubi7/ubi-minimal:latest
 RUN INSTALL_PKGS=" \
       which tar wget hostname shadow-utils \
       socat findutils lsof bind-utils gzip \
-      procps-ng \
+      procps-ng rsync \
       " && \
     ln -s /usr/bin/microdnf /usr/bin/yum && \
     yum install --setopt=tsflags=nodocs ${INSTALL_PKGS} && \
