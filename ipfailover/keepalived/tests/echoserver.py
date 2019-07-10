@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 """ Echo server - reply back with the received message. """
+from __future__ import print_function
 
 import os
 import signal
@@ -9,7 +10,7 @@ import sys
 
 
 def sigusr1_handler(signum, frame):
-    print 'signal %s received, exiting ...' % signum
+    print('signal %s received, exiting ...' % signum)
     sys.exit(0)
 
 
