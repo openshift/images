@@ -10,7 +10,8 @@ RUN INSTALL_PKGS="squid" && \
     rpm -V $INSTALL_PKGS && \
     yum clean all && \
     rmdir /var/log/squid /var/spool/squid && \
-    rm -f /etc/squid/squid.conf
+    rm -f /etc/squid/squid.conf && \
+    chmod -R og+w /etc/squid
 
 ADD egress-http-proxy.sh /bin/egress-http-proxy.sh
 
