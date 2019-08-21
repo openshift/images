@@ -9,6 +9,7 @@ FROM rhel7
 RUN INSTALL_PKGS=" \
       which tar wget hostname sysvinit-tools util-linux \
       socat tree findutils lsof bind-utils shadow-utils \
+      jq \
       " && \
     echo 'skip_missing_names_on_install=0' >> /etc/yum.conf && \
     yum --disablerepo=origin-local-release install -y $INSTALL_PKGS && \
