@@ -6,7 +6,7 @@
 FROM openshift/origin-base
 
 # HAProxy 1.6+ version is needed to leverage DNS resolution at runtime.
-RUN INSTALL_PKGS="haproxy18 rsyslog" && \
+RUN INSTALL_PKGS="haproxy20 rsyslog" && \
     yum install -y $INSTALL_PKGS && \
     rpm -V $INSTALL_PKGS && \
     yum clean all && \
