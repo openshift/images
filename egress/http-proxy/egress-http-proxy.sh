@@ -76,9 +76,9 @@ CONF=/etc/squid/squid.conf
 rm -f ${CONF}
 
 cat > ${CONF} <<EOF
-http_port 8080
+http_port ${EGRESS_HTTP_PROXY_LISTEN_PORT:-8080}
 cache deny all
-access_log none all
+access_log ${EGRESS_HTTP_PROXY_ACCESS_LOG:-none} all
 debug_options ALL,0
 shutdown_lifetime 0
 EOF
