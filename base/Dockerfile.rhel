@@ -2,7 +2,7 @@ FROM registry.access.redhat.com/ubi7/ubi-minimal:latest
 RUN INSTALL_PKGS=" \
       which tar wget hostname shadow-utils \
       socat findutils lsof bind-utils gzip \
-      procps-ng rsync \
+      procps-ng rsync iproute \
       " && \
     if [ ! -e /usr/bin/yum ]; then ln -s /usr/bin/microdnf /usr/bin/yum; fi && \
     echo 'skip_missing_names_on_install=0' >> /etc/yum.conf && \
