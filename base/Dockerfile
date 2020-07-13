@@ -10,6 +10,7 @@ COPY *.repo /etc/yum.repos.d/
 RUN INSTALL_PKGS=" \
       which tar wget hostname sysvinit-tools util-linux \
       socat tree findutils lsof bind-utils shadow-utils \
+      iproute \
       " && \
     echo 'skip_missing_names_on_install=0' >> /etc/yum.conf && \
     yum install -y ${INSTALL_PKGS} && \
