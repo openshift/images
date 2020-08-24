@@ -3,7 +3,7 @@
 #
 # The standard name for this image is openshift/origin-egress-http-proxy
 
-FROM openshift/origin-base
+FROM registry.svc.ci.openshift.org/ocp/4.6:base
 
 RUN INSTALL_PKGS="squid" && \
     yum install -y $INSTALL_PKGS && \
