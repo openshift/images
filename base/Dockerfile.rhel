@@ -1,4 +1,8 @@
 FROM registry.svc.ci.openshift.org/ocp/builder:rhel-8-base-openshift-4.6
+
+# ubi8 does not have a python binary in PATH. Installing it explicitly if /usr/bin/python
+# does not exist so this image is consistent with the ubi7 base.
+
 RUN INSTALL_PKGS=" \
       which tar wget hostname shadow-utils \
       socat findutils lsof bind-utils gzip \
@@ -7,6 +11,7 @@ RUN INSTALL_PKGS=" \
     if [ ! -e /usr/bin/yum ]; then ln -s /usr/bin/microdnf /usr/bin/yum; fi && \
     echo 'skip_missing_names_on_install=0' >> /etc/yum.conf && \
     yum install -y --setopt=tsflags=nodocs ${INSTALL_PKGS} && \
+    ( test -e /usr/bin/python || ( yum install -y --setopt=tsflags=nodocs python3 && alternatives --set python /usr/bin/python3 ) ) && \
     yum clean all && rm -rf /var/cache/*
 LABEL io.k8s.display-name="OpenShift Base" \
       io.k8s.description="This is the base image from which all OpenShift images inherit."
