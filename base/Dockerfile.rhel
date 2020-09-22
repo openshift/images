@@ -4,6 +4,9 @@ FROM registry.svc.ci.openshift.org/ocp/builder:rhel-8-base-openshift-4.6
 # python3 which will be used only if explicitly called by /usr/bin/python3.
 # A ubi8 image will expose python3 as /usr/bin/python. It does not contain
 # python2. Subsequent layers should install if it needed.
+#
+# Set install_weak_deps=False to avoid libmaxminddb from pulling in the
+# very large geolite databases.
 
 RUN INSTALL_PKGS=" \
       which tar wget hostname shadow-utils \
@@ -12,7 +15,7 @@ RUN INSTALL_PKGS=" \
       " && \
     if [ ! -e /usr/bin/yum ]; then ln -s /usr/bin/microdnf /usr/bin/yum; fi && \
     echo 'skip_missing_names_on_install=0' >> /etc/yum.conf && \
-    yum install -y --setopt=tsflags=nodocs ${INSTALL_PKGS} && \
+    yum install -y --setopt=tsflags=nodocs --setopt=install_weak_deps=False ${INSTALL_PKGS} && \
     ( test -e /usr/bin/python ||  alternatives --set python /usr/bin/python3 ) && \
     yum clean all && rm -rf /var/cache/*
 LABEL io.k8s.display-name="OpenShift Base" \
