@@ -18,5 +18,9 @@ RUN INSTALL_PKGS=" \
     yum install -y --setopt=tsflags=nodocs --setopt=install_weak_deps=False ${INSTALL_PKGS} && \
     ( test -e /usr/bin/python ||  alternatives --set python /usr/bin/python3 ) && \
     yum clean all && rm -rf /var/cache/*
+
+# Enable x509 common name matching for golang 1.15 and beyond.
+ENV GODEBUG=x509ignoreCN=0
+
 LABEL io.k8s.display-name="OpenShift Base" \
       io.k8s.description="This is the base image from which all OpenShift images inherit."
