@@ -5,7 +5,7 @@
 
 FROM registry.svc.ci.openshift.org/ocp/4.6:base
 
-RUN INSTALL_PKGS="iproute iputils" && \
+RUN INSTALL_PKGS="iproute iputils iptables" && \
     yum install -y $INSTALL_PKGS && \
     rpm -V $INSTALL_PKGS && \
     yum clean all
