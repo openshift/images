@@ -60,7 +60,6 @@ func main() {
 	signal.Notify(c, os.Interrupt, os.Kill, syscall.SIGTERM)
 
 	if os.Getpid() == 1 {
-		log.Println("Starting reaper")
 		go reapChildProcesses()
 	}
 
