@@ -21,7 +21,8 @@ RUN INSTALL_PKGS=" \
 
 # Enable x509 common name matching for golang 1.15 and beyond.
 # Enable madvdontneed=1, for golang < 1.16 https://github.com/golang/go/issues/42330
-ENV GODEBUG=x509ignoreCN=0,madvdontneed=1
+# Set GOGC to 10% to reduce the memory footprint. By default the GC is triggered when the heap doubles (100%) since the last GC run. Setting it to 10% helps to keep the memory consumption reasonable.
+ENV GODEBUG=x509ignoreCN=0,madvdontneed=1 GOGC=10
 
 LABEL io.k8s.display-name="OpenShift Base" \
       io.k8s.description="This is the base image from which all OpenShift images inherit."
