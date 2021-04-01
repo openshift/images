@@ -3,7 +3,7 @@
 #
 # The standard name for this image is openshift/origin-egress-router
 
-FROM registry.svc.ci.openshift.org/ocp/4.6:base
+FROM registry.ci.openshift.org/ocp/4.7:base
 
 RUN INSTALL_PKGS="iproute iputils iptables" && \
     yum install -y $INSTALL_PKGS && \
