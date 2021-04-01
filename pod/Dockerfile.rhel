@@ -3,7 +3,7 @@ WORKDIR /go/src/github.com/openshift/images
 COPY . .
 RUN CGO_ENABLED=0 go build -installsuffix=cgo -o pod/bin/pod ./pod
 
-FROM registry.svc.ci.openshift.org/ocp/4.6:base
+FROM registry.ci.openshift.org/ocp/4.6:base
 COPY --from=builder /go/src/github.com/openshift/images/pod/bin/pod /usr/bin/
 LABEL io.k8s.display-name="OpenShift Pod" \
       io.k8s.description="This is a component of OpenShift and contains the binary that holds the pod namespaces." \
