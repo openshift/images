@@ -11,6 +11,13 @@ RUN INSTALL_PKGS="kmod keepalived iproute psmisc nmap-ncat net-tools ipset ipset
     yum clean all
 COPY . /var/lib/ipfailover/keepalived/
 
+COPY iptables-scripts/iptables /usr/sbin/
+COPY iptables-scripts/iptables-save /usr/sbin/
+COPY iptables-scripts/iptables-restore /usr/sbin/
+COPY iptables-scripts/ip6tables /usr/sbin/
+COPY iptables-scripts/ip6tables-save /usr/sbin/
+COPY iptables-scripts/ip6tables-restore /usr/sbin/
+
 LABEL io.k8s.display-name="OpenShift IP Failover" \
       io.k8s.description="This is a component of OpenShift and runs a clustered keepalived instance across multiple hosts to allow highly available IP addresses." \
       io.openshift.tags="openshift,ha,ip,failover"
