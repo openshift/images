@@ -5,7 +5,7 @@
 #
 FROM registry.ci.openshift.org/ocp/4.8:base
 
-RUN INSTALL_PKGS="kmod keepalived iproute psmisc nmap-ncat net-tools ipset ipset-libs" && \
+RUN INSTALL_PKGS="kmod keepalived-2.0.10 iproute psmisc nmap-ncat net-tools ipset ipset-libs" && \
     yum install -y $INSTALL_PKGS && \
     rpm -V $INSTALL_PKGS && \
     yum clean all
