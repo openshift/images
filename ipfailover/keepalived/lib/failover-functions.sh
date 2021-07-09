@@ -34,6 +34,20 @@ function cleanup() {
   exit 0
 }
 
+function unconfigure_failover() {
+  echo "  - Removing ip_vs module ..."
+  modprobe -r ip_vs
+
+  chain="${HA_IPTABLES_CHAIN:-""}"
+  if [[ -n ${chain} ]]; then
+    if iptables -C ${chain} 1 -d 224.0.0.18/32 -j ACCEPT ; then
+      echo "  - Removing keepalived multicast iptables rule ..."
+      iptables -D ${chain} 1 -d 224.0.0.18/32 -j ACCEPT
+    fi
+  fi
+
+  cleanup $(pidof /usr/sbin/keepalived)
+}
 
 function setup_failover() {
   echo "  - Loading ip_vs module ..."
