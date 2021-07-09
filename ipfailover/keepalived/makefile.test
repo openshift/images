@@ -9,3 +9,6 @@ test:	image
 
 image:
 	docker build -t $(IMAGE_NAME) .
+
+clean:
+	docker run -it --net=host --privileged=true --entrypoint "/var/lib/ipfailover/keepalived/remove-failover.sh" $(IMAGE_NAME)
