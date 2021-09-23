@@ -3,7 +3,7 @@
 #
 # The standard name for this image is openshift/origin-egress-dns-proxy
 
-FROM registry.ci.openshift.org/ocp/4.9:base
+FROM registry.ci.openshift.org/ocp/4.10:base
 
 # HAProxy 1.6+ version is needed to leverage DNS resolution at runtime.
 RUN INSTALL_PKGS="haproxy22 rsyslog" && \
