@@ -187,6 +187,14 @@ function generate_vrrpd_instance_config() {
   local initialstate=""
   local preempt=${PREEMPTION:-"${DEFAULT_PREEMPTION_STRATEGY}"}
   local vrrpidoffset=${HA_VRRP_ID_OFFSET:-0}
+  local excludedvrrpids=( $HA_EXCLUDED_VRRP_IDS )
+
+  new_vrrp_id=$((vrrpidoffset + iid))
+  while [[ " ${excludedvrrpids[*]} " =~ " ${new_vrrp_id} " ]]; do
+    ((vrrpidoffset++))
+    new_vrrp_id=$((vrrpidoffset + iid))
+    HA_VRRP_ID_OFFSET=$vrrpidoffset
+  done
 
   [ "${instancetype}" = "master" ] && initialstate="state MASTER"
 
@@ -199,7 +207,7 @@ function generate_vrrpd_instance_config() {
 vrrp_instance ${instance_name} {
    interface ${interface}
    ${initialstate}
-   virtual_router_id $((vrrpidoffset + iid))
+   virtual_router_id ${new_vrrp_id}
    priority ${priority}
    ${preempt}
    ${auth_section}
