@@ -196,7 +196,7 @@ function generate_vrrpd_instance_config() {
     HA_VRRP_ID_OFFSET=$vrrpidoffset
   done
 
-  [ "${instancetype}" = "master" ] && initialstate="state MASTER"
+  [ "${instancetype}" = "master" ] && [ "${preempt}" != "nopreempt" ] && initialstate="state MASTER"
 
   local instance_name ; instance_name=$(generate_vrrp_instance_name "${servicename}" "${iid}")
 
