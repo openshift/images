@@ -1,0 +1,25 @@
+FROM registry.ci.openshift.org/ocp/builder:rhel-9-base-openshift-4.13
+
+# A ubi9 image will expose python3 as /usr/bin/python. It does not contain
+# python2. Subsequent layers should install if it needed.
+#
+# Set install_weak_deps=False to avoid libmaxminddb from pulling in the
+# very large geolite databases.
+
+RUN INSTALL_PKGS=" \
+      which tar wget hostname shadow-utils \
+      socat findutils lsof bind-utils gzip \
+      procps-ng rsync iproute diffutils python3 \
+      " && \
+    if [ ! -e /usr/bin/yum ]; then ln -s /usr/bin/microdnf /usr/bin/yum; fi && \
+    echo 'skip_missing_names_on_install=0' >> /etc/yum.conf && \
+    yum install -y --setopt=tsflags=nodocs --setopt=install_weak_deps=False ${INSTALL_PKGS} && \
+    ( test -e /usr/bin/python ||  alternatives --set python /usr/bin/python3 ) && \
+    yum clean all && rm -rf /var/cache/*
+
+# Enable x509 common name matching for golang 1.15 and beyond.
+# Enable madvdontneed=1, for golang < 1.16 https://github.com/golang/go/issues/42330
+ENV GODEBUG=x509ignoreCN=0,madvdontneed=1
+
+LABEL io.k8s.display-name="OpenShift Base RHEL9" \
+      io.k8s.description="This is the base image from which all OpenShift RHEL9 images inherit."
