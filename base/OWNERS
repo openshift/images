@@ -1,9 +1,9 @@
 reviewers:
-  - smarterclayton
   - sdodson
   - rootfs
   - sjenning
   - csrwng
+  - jupierce
 approvers:
-  - smarterclayton
   - sdodson
+  - jupierce
