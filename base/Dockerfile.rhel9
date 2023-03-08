@@ -1,4 +1,4 @@
-FROM registry.ci.openshift.org/ocp/builder:rhel-9-base-openshift-4.13
+FROM registry.ci.openshift.org/ocp/builder:rhel-9-base-openshift-4.14
 
 # A ubi9 image will expose python3 as /usr/bin/python. It does not contain
 # python2. Subsequent layers should install if it needed.
