@@ -2,14 +2,16 @@ approvers:
   - knobunc
   - Miciah
   - frobware
-  - danehans
-  - sgreene570
   - candita
+  - rfredette
+  - gcs278
+  - alebedev87
 reviewers:
   - knobunc
   - Miciah
   - frobware
-  - danehans
-  - sgreene570
   - candita
+  - rfredette
+  - gcs278
+  - alebedev87
 component: Routing
