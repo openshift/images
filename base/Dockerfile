@@ -4,7 +4,7 @@
 #
 # The standard name for this image is openshift/origin-base
 #
-FROM openshift/origin-source
+FROM registry.ci.openshift.org/ocp/builder:rhel-9-base-openshift-4.13
 
 COPY *.repo /etc/yum.repos.d/
 RUN INSTALL_PKGS=" \
