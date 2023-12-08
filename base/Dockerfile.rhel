@@ -1,4 +1,4 @@
-FROM registry.ci.openshift.org/ocp/builder:rhel-8-base-openshift-4.15
+FROM registry.ci.openshift.org/ocp/builder:rhel-8-base-openshift-4.16
 
 # A ubi7 base image will expose python2 in /usr/bin/python. It will also provide
 # python3 which will be used only if explicitly called by /usr/bin/python3.
