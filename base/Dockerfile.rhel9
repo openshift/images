@@ -1,10 +1,13 @@
-FROM registry.ci.openshift.org/ocp/builder:rhel-9-base-openshift-4.16
+# FROM registry.ci.openshift.org/ocp/builder:rhel-9-base-openshift-4.16
+FROM registry.ci.openshift.org/ocp/builder:rhel-9-enterprise-base-multi-openshift-4.16
 
 # A ubi9 image will expose python3 as /usr/bin/python. It does not contain
 # python2. Subsequent layers should install if it needed.
 #
 # Set install_weak_deps=False to avoid libmaxminddb from pulling in the
 # very large geolite databases.
+
+RUN env
 
 RUN INSTALL_PKGS=" \
       which tar wget hostname shadow-utils \
