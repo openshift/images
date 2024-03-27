@@ -278,7 +278,6 @@ func TestHAProxyDefaults(t *testing.T) {
 global
     log         127.0.0.1 local2
 
-    chroot      /var/lib/haproxy
     pidfile     /var/lib/haproxy/run/haproxy.pid
     maxconn     4000
     user        haproxy
