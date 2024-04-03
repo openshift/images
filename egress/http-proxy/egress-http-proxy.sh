@@ -91,4 +91,4 @@ sed -e 's/^/  /' ${CONF}
 echo ""
 echo ""
 
-exec squid -N -f /tmp/squid.conf
+exec squid -N -f ${CONF}
