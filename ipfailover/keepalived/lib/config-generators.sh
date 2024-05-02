@@ -26,6 +26,7 @@ function generate_global_config() {
   local routername ; routername=$(scrub "$1")
 
   echo "global_defs {"
+  echo "   max_auto_priority    99"
   echo "   notification_email {"
 
   for email in ${ADMIN_EMAILS[@]}; do
