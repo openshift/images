@@ -279,7 +279,7 @@ global
     log         127.0.0.1 local2
 
     pidfile     /var/lib/haproxy/run/haproxy.pid
-    maxconn     4000
+    maxconn     8000
     user        haproxy
     group       haproxy
 
