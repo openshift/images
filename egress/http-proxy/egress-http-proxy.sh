@@ -79,7 +79,7 @@ cat > ${CONF} <<EOF
 http_port 8080
 cache deny all
 access_log none all
-debug_options ALL,0
+debug_options ALL,2
 shutdown_lifetime 0
 EOF
 
