@@ -15,6 +15,12 @@ RUN INSTALL_PKGS=" \
     dnf install -y --nodocs --setopt=install_weak_deps=False ${INSTALL_PKGS} && \
     dnf clean all && rm -rf /var/cache/*
 
+# OKD-specific changes
+RUN source /etc/os-release && [ "${ID}" != "centos" ] && exit 0; \
+    INSTALL_PKGS="centos-release-nfv-openvswitch" && \
+        dnf install -y --nodocs --setopt=install_weak_deps=False ${INSTALL_PKGS} && \
+        dnf clean all && rm -rf /var/cache/*
+
 # Enable x509 common name matching for golang 1.15 and beyond.
 # Enable madvdontneed=1, for golang < 1.16 https://github.com/golang/go/issues/42330
 ENV GODEBUG=x509ignoreCN=0,madvdontneed=1
