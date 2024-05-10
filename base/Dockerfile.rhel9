@@ -17,7 +17,9 @@ RUN INSTALL_PKGS=" \
 
 # OKD-specific changes
 RUN source /etc/os-release && [ "${ID}" != "centos" ] && exit 0; \
-    INSTALL_PKGS="centos-release-nfv-openvswitch" && \
+    INSTALL_PKGS="centos-release-nfv-openvswitch centos-release-openstack-zed" && \
+        # Enable the [rt] repository (with no need to install dnf-plugins-core)
+        sed -i '/^\[rt\]/,/^$/s/enabled=0/enabled=1/' /etc/yum.repos.d/*.repo && \
         dnf install -y --nodocs --setopt=install_weak_deps=False ${INSTALL_PKGS} && \
         dnf clean all && rm -rf /var/cache/*
 
