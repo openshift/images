@@ -17,10 +17,12 @@ RUN INSTALL_PKGS=" \
 
 # OKD-specific changes
 RUN source /etc/os-release && [ "${ID}" != "centos" ] && exit 0; \
-    INSTALL_PKGS="dnf-plugins-core centos-release-nfv-openvswitch centos-release-openstack-zed" && \
+    INSTALL_PKGS="dnf-plugins-core centos-release-nfv-openvswitch" && \
         dnf install -y --nodocs --setopt=install_weak_deps=False ${INSTALL_PKGS} && \
         dnf config-manager --set-enabled rt && \
-        dnf clean all && rm -rf /var/cache/*
+        dnf clean all && rm -rf /var/cache/* && \
+    curl -o /etc/yum.repos.d/delorean.repo https://trunk.rdoproject.org/centos9-master/puppet-passed-ci/delorean.repo && \
+    curl -o /etc/yum.repos.d/delorean-deps.repo https://trunk.rdoproject.org/centos9-master/delorean-deps.repo;
 
 # Enable x509 common name matching for golang 1.15 and beyond.
 # Enable madvdontneed=1, for golang < 1.16 https://github.com/golang/go/issues/42330
