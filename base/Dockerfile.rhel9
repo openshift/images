@@ -10,7 +10,7 @@ RUN INSTALL_PKGS=" \
       which tar wget hostname shadow-utils \
       socat findutils lsof bind-utils gzip \
       procps-ng rsync iproute diffutils python3 \
-      python-unversioned-command" && \
+      python-unversioned-command util-linux dbus systemd subscription-manager" && \
     echo 'skip_missing_names_on_install=0' >> /etc/yum.conf && \
     dnf install -y --nodocs --setopt=install_weak_deps=False ${INSTALL_PKGS} && \
     dnf clean all && rm -rf /var/cache/*
