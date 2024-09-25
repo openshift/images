@@ -72,22 +72,23 @@ if [[ "${EGRESS_HTTP_PROXY_MODE:-}" == "unit-test" ]]; then
     exit 0
 fi
 
-CONF=/etc/squid/squid.conf
-rm -f ${CONF}
+CONF=/tmp/squid.conf
+rm -f "${CONF}"
 
-cat > ${CONF} <<EOF
+cat > "${CONF}" <<EOF
 http_port 8080
 cache deny all
 access_log none all
 debug_options ALL,0
 shutdown_lifetime 0
+pid_filename none
 EOF
 
-generate_acls >> ${CONF}
+generate_acls >> "${CONF}"
 
 echo "Running squid with config:"
-sed -e 's/^/  /' ${CONF}
+sed -e 's/^/  /' "${CONF}"
 echo ""
 echo ""
 
-exec squid -N
+exec squid -N -f "${CONF}"
