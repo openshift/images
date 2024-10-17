@@ -14,6 +14,7 @@ readonly CHECK_INTERVAL_SECS="${HA_CHECK_INTERVAL}"
 readonly VRRP_SLAVE_PRIORITY=42
 
 readonly DEFAULT_PREEMPTION_STRATEGY="preempt_delay 300"
+readonly NO_PREEMPTION_STRATEGY="nopreempt"
 
 
 #
@@ -237,6 +238,7 @@ function generate_failover_config() {
   local interface ; interface=$(get_network_device "${NETWORK_INTERFACE}")
   local ipaddr ; ipaddr=$(get_device_ip_address "${interface}")
   local port="${HA_MONITOR_PORT//[^0-9]/}"
+  local preempt=${PREEMPTION:-"${DEFAULT_PREEMPTION_STRATEGY}"}
 
   echo "! Configuration File for keepalived
 
@@ -285,8 +287,14 @@ $(generate_script_config "${ipaddr}" "${port}")
     local instancetype="slave"
     local n=$((counter % idx))
 
+
+
     if [[ ${n} -eq 0 ]]; then
-      instancetype="master"
+      # Only set instancetype as master if the preempt strategy is not nopreempt.
+      # The nopreempt option doesn't work for VRRPD instances that are masters.
+      if [[ "${preempt}" != "${NO_PREEMPTION_STRATEGY}" ]]; then
+        instancetype="master"
+      fi
       if [[ "${previous}" == "master" ]]; then
         #  Inverse priority + reset, so that we can flip-flop priorities.
         priority=$((ipslot + 1))
