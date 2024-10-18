@@ -14,6 +14,7 @@ readonly CHECK_INTERVAL_SECS="${HA_CHECK_INTERVAL}"
 readonly VRRP_SLAVE_PRIORITY=42
 
 readonly DEFAULT_PREEMPTION_STRATEGY="preempt_delay 300"
+readonly NO_PREEMPTION_STRATEGY="nopreempt"
 
 
 #
@@ -170,9 +171,9 @@ function generate_vip_section() {
 #  Generate vrrpd instance configuration section.
 #
 #  Examples:
-#      generate_vrrpd_instance_config arp 1 "10.1.2.3" enp0s8 "252" "master"
+#      generate_vrrpd_instance_config arp 1 "10.1.2.3" enp0s8 "252" "master" "preempt_delay 300"
 #
-#      generate_vrrpd_instance_config arp 1 "10.1.2.3" enp0s8 "3" "slave"
+#      generate_vrrpd_instance_config arp 1 "10.1.2.3" enp0s8 "3" "slave" "nopreempt"
 #
 #      generate_vrrpd_instance_config ipf-1 4 "10.1.2.3-4" enp0s8 "7"
 #
@@ -183,10 +184,10 @@ function generate_vrrpd_instance_config() {
   local interface=$4
   local priority=${5:-"10"}
   local instancetype=${6:-"slave"}
+  local preempt=${7:-"${DEFAULT_PREEMPTION_STRATEGY}"}
 
   local vipname ; vipname=$(scrub "$1")
   local initialstate=""
-  local preempt=${PREEMPTION:-"${DEFAULT_PREEMPTION_STRATEGY}"}
   local vrrpidoffset=${HA_VRRP_ID_OFFSET:-0}
   local excludedvrrpids=( $HA_EXCLUDED_VRRP_IDS )
 
@@ -237,6 +238,7 @@ function generate_failover_config() {
   local interface ; interface=$(get_network_device "${NETWORK_INTERFACE}")
   local ipaddr ; ipaddr=$(get_device_ip_address "${interface}")
   local port="${HA_MONITOR_PORT//[^0-9]/}"
+  local preempt=${PREEMPTION:-"${DEFAULT_PREEMPTION_STRATEGY}"}
 
   echo "! Configuration File for keepalived
 
@@ -286,7 +288,11 @@ $(generate_script_config "${ipaddr}" "${port}")
     local n=$((counter % idx))
 
     if [[ ${n} -eq 0 ]]; then
-      instancetype="master"
+      # Only set instancetype as master if the preempt strategy is not nopreempt.
+      # The nopreempt option doesn't work for VRRPD instances that are masters.
+      if [[ "${preempt}" != "${NO_PREEMPTION_STRATEGY}" ]]; then
+        instancetype="master"
+      fi
       if [[ "${previous}" == "master" ]]; then
         #  Inverse priority + reset, so that we can flip-flop priorities.
         priority=$((ipslot + 1))
@@ -298,7 +304,7 @@ $(generate_script_config "${ipaddr}" "${port}")
     fi
 
     generate_vrrpd_instance_config "${HA_CONFIG_NAME}" "${counter}" "${vip_group[*]}" \
-      "${interface}" "${priority}" "${instancetype}"
+      "${interface}" "${priority}" "${instancetype}" "${preempt}"
     ((counter++))
 
   done
