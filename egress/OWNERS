@@ -6,6 +6,8 @@ approvers:
   - rfredette
   - gcs278
   - alebedev87
+  - Thealisyed
+  - grzpiotrowski
 reviewers:
   - knobunc
   - Miciah
@@ -14,4 +16,6 @@ reviewers:
   - rfredette
   - gcs278
   - alebedev87
+  - Thealisyed
+  - grzpiotrowski
 component: Routing
