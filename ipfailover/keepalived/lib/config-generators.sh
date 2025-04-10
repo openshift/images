@@ -188,7 +188,7 @@ function generate_vrrpd_instance_config() {
 
   local vipname ; vipname=$(scrub "$1")
   local initialstate=""
-  local vrrpidoffset=${HA_VRRP_ID_OFFSET:-0}
+  local vrrpidoffset=${HA_VRRP_ID_OFFSET:-10}
   local excludedvrrpids=( $HA_EXCLUDED_VRRP_IDS )
 
   new_vrrp_id=$((vrrpidoffset + iid))
