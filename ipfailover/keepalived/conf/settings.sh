@@ -38,10 +38,10 @@ HA_REPLICA_COUNT="${OPENSHIFT_HA_REPLICA_COUNT:-"1"}"
 
 #  Offset value to use to set the virtual router ids. Using different offset
 #  values allows multiple ipfailover configurations to exist within the
-#  same cluster. Range 1..255
+#  same cluster. Range 0..254
 #     HA_VRRP_ID_OFFSET=30
 #
-HA_VRRP_ID_OFFSET="${OPENSHIFT_HA_VRRP_ID_OFFSET:-"0"}"
+HA_VRRP_ID_OFFSET="${OPENSHIFT_HA_VRRP_ID_OFFSET:-"10"}"
 
 # When the DC supplies an (non null) iptables chain
 # (OPENSHIFT_HA_IPTABLES_CHAIN) make sure the rule to pass keepalived
