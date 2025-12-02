@@ -12,13 +12,13 @@ RUN INSTALL_PKGS=" \
       procps-ng rsync iproute diffutils python3 \
       python-unversioned-command util-linux dbus systemd subscription-manager" && \
     echo 'skip_missing_names_on_install=0' >> /etc/yum.conf && \
-    dnf install -y --nodocs --setopt=install_weak_deps=False ${INSTALL_PKGS} && \
+    dnf install -y --nodocs --setopt=install_weak_deps=0 ${INSTALL_PKGS} && \
     dnf clean all && rm -rf /var/cache/*
 
 # OKD-specific changes
 RUN source /etc/os-release && [ "${ID}" != "centos" ] && exit 0; \
     INSTALL_PKGS="dnf-plugins-core centos-release-nfv-openvswitch centos-release-openstack-zed" && \
-        dnf install -y --nodocs --setopt=install_weak_deps=False ${INSTALL_PKGS} && \
+        dnf install -y --nodocs --setopt=install_weak_deps=0 ${INSTALL_PKGS} && \
         dnf config-manager --set-enabled rt && \
         dnf clean all && rm -rf /var/cache/*
 
