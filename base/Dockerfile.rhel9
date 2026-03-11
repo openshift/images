@@ -25,7 +25,10 @@ RUN source /etc/os-release && [ "${ID}" != "centos" ] && exit 0; \
         dnf clean all && rm -rf /var/cache/*; \
     [ "${VERSION_ID}" = "10" ] && \
         curl -o /etc/yum.repos.d/delorean.repo https://trunk.rdoproject.org/centos10-master/podified-ci-testing/delorean.repo && \
-        curl -o /etc/yum.repos.d/delorean-deps.repo https://trunk.rdoproject.org/centos10-master/delorean-deps.repo || true
+        curl -o /etc/yum.repos.d/delorean-deps.repo https://trunk.rdoproject.org/centos10-master/delorean-deps.repo && \
+        # gpgme removed from ubi10-minimal, was in ubi9-minimal required by all builds with github.com/proglottis/gpgme
+        dnf install -y --nodocs --setopt=install_weak_deps=False gpgme && \
+        dnf clean all && rm -rf /var/cache/* || true
 
 # Enable x509 common name matching for golang 1.15 and beyond.
 # Enable madvdontneed=1, for golang < 1.16 https://github.com/golang/go/issues/42330
