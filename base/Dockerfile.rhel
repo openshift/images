@@ -15,7 +15,9 @@ RUN INSTALL_PKGS=" \
       " && \
     if [ ! -e /usr/bin/yum ]; then ln -s /usr/bin/microdnf /usr/bin/yum; fi && \
     echo 'skip_missing_names_on_install=0' >> /etc/yum.conf && \
-    yum install -y --setopt=tsflags=nodocs --setopt=install_weak_deps=False ${INSTALL_PKGS} && \
+    echo 'install_weak_deps=0' >> /etc/yum.conf && \
+    echo 'tsflags=nodocs' >> /etc/yum.conf && \
+    yum install -y ${INSTALL_PKGS} && \
     ( test -e /usr/bin/python ||  alternatives --set python /usr/bin/python3 ) && \
     yum clean all && rm -rf /var/cache/*
 
