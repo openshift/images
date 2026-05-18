@@ -13,21 +13,22 @@ RUN INSTALL_PKGS=" \
       python-unversioned-command util-linux" && \
     echo 'skip_missing_names_on_install=0' >> /etc/yum.conf && \
     echo 'install_weak_deps=0' >> /etc/yum.conf && \
-    dnf install -y --nodocs ${INSTALL_PKGS} && \
+    echo 'tsflags=nodocs' >> /etc/yum.conf && \
+    dnf install -y ${INSTALL_PKGS} && \
     dnf clean all && rm -rf /var/cache/*
 
 # OKD-specific changes
 RUN source /etc/os-release && [ "${ID}" != "centos" ] && exit 0; \
     INSTALL_PKGS="dnf-plugins-core centos-release-nfv-openvswitch" && \
     [ "${VERSION_ID}" = "9" ] && INSTALL_PKGS="${INSTALL_PKGS} centos-release-openstack-zed"; \
-    dnf install -y --nodocs --setopt=install_weak_deps=False ${INSTALL_PKGS} && \
+    dnf install -y ${INSTALL_PKGS} && \
         dnf config-manager --set-enabled rt && \
         dnf clean all && rm -rf /var/cache/*; \
     [ "${VERSION_ID}" = "10" ] && \
         curl -o /etc/yum.repos.d/delorean.repo https://trunk.rdoproject.org/centos10-master/podified-ci-testing/delorean.repo && \
         curl -o /etc/yum.repos.d/delorean-deps.repo https://trunk.rdoproject.org/centos10-master/delorean-deps.repo && \
         # gpgme removed from ubi10-minimal, was in ubi9-minimal required by all builds with github.com/proglottis/gpgme
-        dnf install -y --nodocs --setopt=install_weak_deps=False gpgme && \
+        dnf install -y gpgme && \
         dnf clean all && rm -rf /var/cache/* || true
 
 # Enable x509 common name matching for golang 1.15 and beyond.
