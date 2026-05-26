@@ -43,10 +43,14 @@ HA_REPLICA_COUNT="${OPENSHIFT_HA_REPLICA_COUNT:-"1"}"
 #
 HA_VRRP_ID_OFFSET="${OPENSHIFT_HA_VRRP_ID_OFFSET:-"0"}"
 
-# When the DC supplies an (non null) iptables chain
-# (OPENSHIFT_HA_IPTABLES_CHAIN) make sure the rule to pass keepalived
-# multicast (224.0.0.18) traffic is in the table.
-HA_IPTABLES_CHAIN="${OPENSHIFT_HA_IPTABLES_CHAIN:-""}"
+# When set (non-empty), nftables rules are created to allow keepalived
+# multicast (224.0.0.18) traffic. Only the non-emptiness of the value
+# matters; nft manages its own isolated table and chain.
+#
+# OPENSHIFT_HA_NFTABLES_RULE is the preferred env var name.
+# OPENSHIFT_HA_IPTABLES_CHAIN is accepted for backward compatibility
+# with existing deployments but is deprecated.
+HA_MULTICAST_ACCEPT="${OPENSHIFT_HA_NFTABLES_RULE:-${OPENSHIFT_HA_IPTABLES_CHAIN:-""}}"
 
 # Optional external check script that is run every HA_CHECK_INTERVAL seconds
 # The script can test whatever is needed to verify the application is running.
