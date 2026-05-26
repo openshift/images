@@ -38,11 +38,14 @@ function unconfigure_failover() {
   echo "  - Removing ip_vs module ..."
   modprobe -r ip_vs
 
-  chain="${HA_IPTABLES_CHAIN:-""}"
-  if [[ -n ${chain} ]]; then
-    if iptables -C ${chain} 1 -d 224.0.0.18/32 -j ACCEPT ; then
-      echo "  - Removing keepalived multicast iptables rule ..."
-      iptables -D ${chain} 1 -d 224.0.0.18/32 -j ACCEPT
+  # Remove the nftables table we created for keepalived multicast.
+  # Unlike iptables where we removed a single rule from a shared chain,
+  # nft gives us an isolated table ("inet keepalived") that only we own,
+  # so deleting the entire table is the correct cleanup.
+  if [[ -n "${HA_MULTICAST_ACCEPT:-}" ]]; then
+    if nft list table inet keepalived > /dev/null 2>&1 ; then
+      echo "  - Removing keepalived multicast nftables rules ..."
+      nft delete table inet keepalived
     fi
   fi
 
@@ -60,16 +63,31 @@ function setup_failover() {
     echo "ERROR: Module ip_vs is NOT available."
   fi
 
-  # When the DC supplies an (non null) iptables chain
-  # (OPENSHIFT_HA_IPTABLES_CHAIN) make sure the rule to pass keepalived
-  # multicast (224.0.0.18) traffic is in the table.
-  chain="${HA_IPTABLES_CHAIN:-""}"
-  if [[ -n ${chain} ]]; then
-    echo "  - check for iptables rule for keepalived multicast (224.0.0.18) ..."
-    if ! iptables -S | grep 224.0.0.18 > /dev/null 2>&1 ; then
-      # Add the rule to the beginning of the chain.
-      echo "  - adding iptables rule to $chain to access 224.0.0.18."
-      iptables -I ${chain} 1 -d 224.0.0.18/32 -j ACCEPT
+  # When HA_MULTICAST_ACCEPT is set, ensure an nftables rule exists to
+  # explicitly allow VRRP multicast traffic (224.0.0.18) used by keepalived.
+  # The chain policy is "accept" so this rule is defense-in-depth, not
+  # load-bearing — traffic would flow without it, but we keep it as an
+  # explicit signal that multicast is expected.
+  #
+  # nft creates an isolated table ("inet keepalived") with its own chain
+  # hooked into the input path. This is different from iptables where we
+  # inserted a rule into an existing shared chain. The table name is fixed
+  # and does not come from the env var value.
+  if [[ -n "${HA_MULTICAST_ACCEPT:-}" ]]; then
+    echo "  - Ensuring nftables rule for keepalived multicast (224.0.0.18) ..."
+    if ! nft list chain inet keepalived filter 2>/dev/null | grep -q 'ip daddr 224.0.0.18 accept' ; then
+      echo "  - Adding nftables rule to accept multicast 224.0.0.18."
+      # Atomic batch: create the table, chain, and rule in one nft -f call.
+      # "inet" family handles both IPv4 and IPv6.
+      # Hook "input" at priority 0 matches where the old iptables rule lived.
+      nft -f - <<-'NFT'
+	table inet keepalived {
+	  chain filter {
+	    type filter hook input priority 0; policy accept;
+	    ip daddr 224.0.0.18 accept
+	  }
+	}
+	NFT
     fi
   fi
 
