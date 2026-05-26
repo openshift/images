@@ -38,11 +38,10 @@ function unconfigure_failover() {
   echo "  - Removing ip_vs module ..."
   modprobe -r ip_vs
 
-  chain="${HA_IPTABLES_CHAIN:-""}"
-  if [[ -n ${chain} ]]; then
-    if iptables -C ${chain} 1 -d 224.0.0.18/32 -j ACCEPT ; then
-      echo "  - Removing keepalived multicast iptables rule ..."
-      iptables -D ${chain} 1 -d 224.0.0.18/32 -j ACCEPT
+  if [[ -n "${HA_IPTABLES_CHAIN:-}" ]]; then
+    if nft list table inet keepalived > /dev/null 2>&1 ; then
+      echo "  - Removing keepalived multicast nft rules ..."
+      nft delete table inet keepalived
     fi
   fi
 
@@ -60,16 +59,18 @@ function setup_failover() {
     echo "ERROR: Module ip_vs is NOT available."
   fi
 
-  # When the DC supplies an (non null) iptables chain
-  # (OPENSHIFT_HA_IPTABLES_CHAIN) make sure the rule to pass keepalived
-  # multicast (224.0.0.18) traffic is in the table.
-  chain="${HA_IPTABLES_CHAIN:-""}"
-  if [[ -n ${chain} ]]; then
-    echo "  - check for iptables rule for keepalived multicast (224.0.0.18) ..."
-    if ! iptables -S | grep 224.0.0.18 > /dev/null 2>&1 ; then
-      # Add the rule to the beginning of the chain.
-      echo "  - adding iptables rule to $chain to access 224.0.0.18."
-      iptables -I ${chain} 1 -d 224.0.0.18/32 -j ACCEPT
+  if [[ -n "${HA_IPTABLES_CHAIN:-}" ]]; then
+    echo "  - Ensuring nft rule for keepalived multicast (224.0.0.18) ..."
+    if ! nft list chain inet keepalived filter 2>/dev/null | grep -q 'ip daddr 224.0.0.18 accept' ; then
+      echo "  - Adding nft rule to accept multicast 224.0.0.18."
+      nft -f - <<-'NFT'
+	table inet keepalived {
+	  chain filter {
+	    type filter hook input priority 0; policy accept;
+	    ip daddr 224.0.0.18 accept
+	  }
+	}
+	NFT
     fi
   fi
 
