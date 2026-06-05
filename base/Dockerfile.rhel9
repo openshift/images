@@ -1,12 +1,12 @@
 # Builder stage: Configure crypto-policies with post-quantum support
-FROM registry.ci.openshift.org/ocp/4.22:base-rhel9 AS builder
+FROM registry.ci.openshift.org/ocp/5.0:base-rhel9 AS builder
 
 RUN dnf install -y --nodocs crypto-policies-scripts && \
     update-crypto-policies --set DEFAULT:PQ && \
     dnf clean all && rm -rf /var/cache/*
 
 # Final stage: Base RHEL9 image with PQ crypto-policies
-FROM registry.ci.openshift.org/ocp/4.22:base-rhel9
+FROM registry.ci.openshift.org/ocp/5.0:base-rhel9
 
 # Copy crypto-policies configuration from builder stage
 COPY --from=builder /etc/crypto-policies/ /etc/crypto-policies/
