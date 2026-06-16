@@ -1,7 +1,5 @@
 FROM registry.ci.openshift.org/ocp/5.0:base-rhel10
 
-# Copy crypto-policies configuration from builder stage
-COPY --from=builder /etc/crypto-policies/ /etc/crypto-policies/
 
 # A ubi10 image will expose python3 as /usr/bin/python. It does not contain
 # python2. Subsequent layers should install if it needed.
