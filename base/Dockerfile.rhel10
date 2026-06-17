@@ -16,7 +16,6 @@ RUN INSTALL_PKGS=" \
     dnf install -y --nodocs ${INSTALL_PKGS} && \
     dnf clean all && rm -rf /var/cache/*
 
-ENV GODEBUG=x509ignoreCN=0,madvdontneed=1
 
 LABEL io.k8s.display-name="OpenShift Base RHEL10" \
       io.k8s.description="This is the base image from which all OpenShift RHEL10 images inherit."
