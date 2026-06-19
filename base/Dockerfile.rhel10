@@ -1,0 +1,21 @@
+FROM registry.ci.openshift.org/ocp/5.0:base-rhel10
+
+# A ubi10 image will expose python3 as /usr/bin/python. It does not contain
+# python2. Subsequent layers should install if it needed.
+#
+# Set install_weak_deps=False to avoid libmaxminddb from pulling in the
+# very large geolite databases.
+
+RUN INSTALL_PKGS=" \
+      which tar wget hostname shadow-utils \
+      socat findutils lsof bind-utils gzip \
+      procps-ng rsync iproute diffutils python3 \
+      python-unversioned-command util-linux gpgme" && \
+    echo 'skip_missing_names_on_install=0' >> /etc/yum.conf && \
+    echo 'install_weak_deps=0' >> /etc/yum.conf && \
+    dnf install -y --nodocs ${INSTALL_PKGS} && \
+    dnf clean all && rm -rf /var/cache/*
+
+
+LABEL io.k8s.display-name="OpenShift Base RHEL10" \
+      io.k8s.description="This is the base image from which all OpenShift RHEL10 images inherit."
