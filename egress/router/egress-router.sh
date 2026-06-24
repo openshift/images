@@ -60,7 +60,7 @@ function validate_port() {
     fi
 }
 
-function gen_iptables_rules() {
+function gen_nft_rules() {
     if [[ -z "${EGRESS_DESTINATION:-}" ]]; then
         die "EGRESS_DESTINATION unspecified"
     fi
@@ -79,17 +79,17 @@ function gen_iptables_rules() {
         localport=""
         if [[ "${dest}" =~ ^${IP_REGEX}$ ]]; then
             # single IP address: do fallback "all ports to same IP"
-            echo -A PREROUTING -i eth0 -j DNAT --to-destination "${dest}"
+            echo "add rule ip nat prerouting iifname \"eth0\" dnat to ${dest}"
             did_fallback=1
 
         elif [[ "${dest}" =~ ^${PORT_REGEX}\ +${PROTO_REGEX}\ +${IP_REGEX}$ ]]; then
             read localport proto destip <<< "${dest}"
-            echo -A PREROUTING -i eth0 -p "${proto}" --dport "${localport}" -j DNAT --to-destination "${destip}"
+            echo "add rule ip nat prerouting iifname \"eth0\" ${proto} dport ${localport} dnat to ${destip}"
 
         elif [[ "${dest}" =~ ^${PORT_REGEX}\ +${PROTO_REGEX}\ +${IP_REGEX}\ +${PORT_REGEX}$ ]]; then
             read localport proto destip destport <<< "${dest}"
             validate_port ${destport}
-            echo -A PREROUTING -i eth0 -p "${proto}" --dport "${localport}" -j DNAT --to-destination "${destip}:${destport}"
+            echo "add rule ip nat prerouting iifname \"eth0\" ${proto} dport ${localport} dnat to ${destip}:${destport}"
 
         else
             die "EGRESS_DESTINATION value '${dest}' is invalid" 1>&2
@@ -106,16 +106,24 @@ function gen_iptables_rules() {
             fi
         fi
     done <<< "${EGRESS_DESTINATION}"
-    echo -A POSTROUTING -o macvlan0 -j SNAT --to-source "${EGRESS_SOURCE}"
+    echo "add rule ip nat postrouting oifname \"macvlan0\" snat to ${EGRESS_SOURCE}"
 }
 
-function setup_iptables() {
-    iptables -t nat -F
-    ( echo "*nat";
-      echo ":PREROUTING ACCEPT [0:0]";
-      echo ":POSTROUTING ACCEPT [0:0]";
-      gen_iptables_rules;
-      echo "COMMIT" ) | iptables-restore --noflush --table nat
+function setup_nft() {
+    {
+        cat <<-'NFT'
+	table ip nat {
+	  chain prerouting {
+	    type nat hook prerouting priority dstnat; policy accept;
+	  }
+	  chain postrouting {
+	    type nat hook postrouting priority srcnat; policy accept;
+	  }
+	}
+	flush table ip nat
+	NFT
+        gen_nft_rules
+    } | nft -f -
 }
 
 function wait_until_killed() {
@@ -140,12 +148,12 @@ function wait_until_killed() {
 case "${EGRESS_ROUTER_MODE:=legacy}" in
     init)
         setup_network
-        setup_iptables
+        setup_nft
         ;;
 
     legacy)
         setup_network
-        setup_iptables
+        setup_nft
         wait_until_killed
         ;;
 
@@ -158,7 +166,7 @@ case "${EGRESS_ROUTER_MODE:=legacy}" in
         ;;
 
     unit-test)
-        gen_iptables_rules
+        gen_nft_rules
         ;;
 
     *)
