@@ -19,8 +19,8 @@ func TestEgressRouter(t *testing.T) {
 			gateway: "1.1.1.1",
 			dest:    "10.1.2.3",
 			output: `
--A PREROUTING -i eth0 -j DNAT --to-destination 10.1.2.3
--A POSTROUTING -o macvlan0 -j SNAT --to-source 1.2.3.4
+add rule ip nat prerouting iifname "eth0" dnat to 10.1.2.3
+add rule ip nat postrouting oifname "macvlan0" snat to 1.2.3.4
 `,
 		},
 		{
@@ -28,8 +28,8 @@ func TestEgressRouter(t *testing.T) {
 			gateway: "1.1.1.1",
 			dest:    "10.1.2.3",
 			output: `
--A PREROUTING -i eth0 -j DNAT --to-destination 10.1.2.3
--A POSTROUTING -o macvlan0 -j SNAT --to-source 1.2.3.4
+add rule ip nat prerouting iifname "eth0" dnat to 10.1.2.3
+add rule ip nat postrouting oifname "macvlan0" snat to 1.2.3.4
 `,
 		},
 		{
@@ -37,8 +37,8 @@ func TestEgressRouter(t *testing.T) {
 			gateway: "1.1.1.1",
 			dest:    "10.1.2.3",
 			output: `
--A PREROUTING -i eth0 -j DNAT --to-destination 10.1.2.3
--A POSTROUTING -o macvlan0 -j SNAT --to-source 1.2.3.4
+add rule ip nat prerouting iifname "eth0" dnat to 10.1.2.3
+add rule ip nat postrouting oifname "macvlan0" snat to 1.2.3.4
 `,
 		},
 		{
@@ -46,8 +46,8 @@ func TestEgressRouter(t *testing.T) {
 			gateway: "1.1.1.1",
 			dest:    "10.1.2.3\n",
 			output: `
--A PREROUTING -i eth0 -j DNAT --to-destination 10.1.2.3
--A POSTROUTING -o macvlan0 -j SNAT --to-source 1.2.3.4
+add rule ip nat prerouting iifname "eth0" dnat to 10.1.2.3
+add rule ip nat postrouting oifname "macvlan0" snat to 1.2.3.4
 `,
 		},
 		{
@@ -55,8 +55,8 @@ func TestEgressRouter(t *testing.T) {
 			gateway: "1.1.1.1",
 			dest:    "80 tcp 10.4.5.6",
 			output: `
--A PREROUTING -i eth0 -p tcp --dport 80 -j DNAT --to-destination 10.4.5.6
--A POSTROUTING -o macvlan0 -j SNAT --to-source 1.2.3.4
+add rule ip nat prerouting iifname "eth0" tcp dport 80 dnat to 10.4.5.6
+add rule ip nat postrouting oifname "macvlan0" snat to 1.2.3.4
 `,
 		},
 		{
@@ -64,8 +64,8 @@ func TestEgressRouter(t *testing.T) {
 			gateway: "1.1.1.1",
 			dest:    "8080 tcp 10.7.8.9 80",
 			output: `
--A PREROUTING -i eth0 -p tcp --dport 8080 -j DNAT --to-destination 10.7.8.9:80
--A POSTROUTING -o macvlan0 -j SNAT --to-source 1.2.3.4
+add rule ip nat prerouting iifname "eth0" tcp dport 8080 dnat to 10.7.8.9:80
+add rule ip nat postrouting oifname "macvlan0" snat to 1.2.3.4
 `,
 		},
 		{
@@ -73,9 +73,9 @@ func TestEgressRouter(t *testing.T) {
 			gateway: "1.1.1.1",
 			dest:    "80 tcp 10.4.5.6\n8080 tcp 10.7.8.9 80",
 			output: `
--A PREROUTING -i eth0 -p tcp --dport 80 -j DNAT --to-destination 10.4.5.6
--A PREROUTING -i eth0 -p tcp --dport 8080 -j DNAT --to-destination 10.7.8.9:80
--A POSTROUTING -o macvlan0 -j SNAT --to-source 1.2.3.4
+add rule ip nat prerouting iifname "eth0" tcp dport 80 dnat to 10.4.5.6
+add rule ip nat prerouting iifname "eth0" tcp dport 8080 dnat to 10.7.8.9:80
+add rule ip nat postrouting oifname "macvlan0" snat to 1.2.3.4
 `,
 		},
 		{
@@ -83,10 +83,10 @@ func TestEgressRouter(t *testing.T) {
 			gateway: "1.1.1.1",
 			dest:    "80 tcp 10.4.5.6\n8080 tcp 10.7.8.9 80\n10.1.2.3",
 			output: `
--A PREROUTING -i eth0 -p tcp --dport 80 -j DNAT --to-destination 10.4.5.6
--A PREROUTING -i eth0 -p tcp --dport 8080 -j DNAT --to-destination 10.7.8.9:80
--A PREROUTING -i eth0 -j DNAT --to-destination 10.1.2.3
--A POSTROUTING -o macvlan0 -j SNAT --to-source 1.2.3.4
+add rule ip nat prerouting iifname "eth0" tcp dport 80 dnat to 10.4.5.6
+add rule ip nat prerouting iifname "eth0" tcp dport 8080 dnat to 10.7.8.9:80
+add rule ip nat prerouting iifname "eth0" dnat to 10.1.2.3
+add rule ip nat postrouting oifname "macvlan0" snat to 1.2.3.4
 `,
 		},
 		{
@@ -112,10 +112,10 @@ func TestEgressRouter(t *testing.T) {
 # No, seriously, don't add anything here
 `,
 			output: `
--A PREROUTING -i eth0 -p tcp --dport 80 -j DNAT --to-destination 10.4.5.6
--A PREROUTING -i eth0 -p tcp --dport 8080 -j DNAT --to-destination 10.7.8.9:80
--A PREROUTING -i eth0 -j DNAT --to-destination 10.1.2.3
--A POSTROUTING -o macvlan0 -j SNAT --to-source 1.2.3.4
+add rule ip nat prerouting iifname "eth0" tcp dport 80 dnat to 10.4.5.6
+add rule ip nat prerouting iifname "eth0" tcp dport 8080 dnat to 10.7.8.9:80
+add rule ip nat prerouting iifname "eth0" dnat to 10.1.2.3
+add rule ip nat postrouting oifname "macvlan0" snat to 1.2.3.4
 `,
 		},
 	}
