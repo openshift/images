@@ -1,26 +1,33 @@
-reviewers:
-  - pecameron
-  - smarterclayton
-  - pweil-
-  - knobunc
-  - ironcladlou
-  - Miciah
-  - frobware
-  - danehans
-  - sgreene570
-  - candita
 approvers:
-  - smarterclayton
-  - pweil-
   - knobunc
-  - ironcladlou
-  - danwinship
-  - rajatchopra
-  - pravisankar
-  - dcbw
   - Miciah
-  - frobware
-  - danehans
-  - sgreene570
   - candita
+  - rfredette
+  - alebedev87
+  - gcs278
+  - Thealisyed
+  - grzpiotrowski
+  - rikatz
+  - davidesalerno
+  - bentito
+  - jcmoraisjr
+  - aswinsuryan
+  - melvinjoseph86
+  - rhamini3
+reviewers:
+  - knobunc
+  - Miciah
+  - candita
+  - rfredette
+  - alebedev87
+  - gcs278
+  - Thealisyed
+  - grzpiotrowski
+  - rikatz
+  - davidesalerno
+  - bentito
+  - jcmoraisjr
+  - aswinsuryan
+  - melvinjoseph86
+  - rhamini3
 component: Routing

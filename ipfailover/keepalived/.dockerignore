@@ -1,4 +1,3 @@
 /settings.minion*
 **/.gitignore
 /makefile.test
-/tests
