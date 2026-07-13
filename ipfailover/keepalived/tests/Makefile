@@ -5,7 +5,7 @@ build:
 	@echo "Building extension binary..."
 	@mkdir -p bin
 	GOTOOLCHAIN=auto GOSUMDB=sum.golang.org go build -o $(BINARY) ./cmd
-	@echo "✅ Binary built: $(BINARY)"
+	@echo "Binary built: $(BINARY)"
 
 .PHONY: clean
 clean:

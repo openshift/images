@@ -2,6 +2,9 @@ package extensiontests
 
 import (
 	"context"
+	"fmt"
+	"maps"
+	"os"
 	"sync"
 
 	"github.com/openshift-eng/openshift-tests-extension/pkg/util/sets"
@@ -9,8 +12,43 @@ import (
 
 const defaultConflictGroup = "default"
 
+// SchedulerOption configures optional scheduler behavior.
+type SchedulerOption func(*testScheduler)
+
+// WithResourcePoolCapacity configures named resource pools with finite capacity.
+// The scheduler will only dispatch a test when all of its declared pool demands
+// can be satisfied by currently available capacity.
+func WithResourcePoolCapacity(pools map[string]int) SchedulerOption {
+	return func(ts *testScheduler) {
+		ts.poolCapacity = maps.Clone(pools)
+		ts.poolAvailable = maps.Clone(pools)
+	}
+}
+
+// WithSchedulerAccessor registers a callback that receives the Scheduler during
+// construction, before NewScheduler returns. This allows callers that don't
+// directly create the scheduler (e.g., code invoking Run()) to store a reference
+// for external observability. The Scheduler is fully initialized when the callback
+// fires; type-assert to SchedulerDiagnostics to access GetSnapshot.
+func WithSchedulerAccessor(fn func(Scheduler)) SchedulerOption {
+	return func(ts *testScheduler) {
+		ts.accessor = fn
+	}
+}
+
+// SchedulerSnapshot is a point-in-time view of scheduler state for diagnostics.
+type SchedulerSnapshot struct {
+	QueueLength          int
+	QueueFront           string
+	QueueFrontResourcePools map[string]int
+	ResourcePoolCapacity    map[string]int
+	ResourcePoolAvailable   map[string]int
+	ActiveCount          int
+}
+
 // Scheduler defines the interface for test scheduling.
-// It manages scheduling based on isolation requirements (conflicts, taints, tolerations).
+// It manages scheduling based on isolation requirements (conflicts, taints, tolerations)
+// and optional named resource pool capacity.
 //
 // Callers must follow a get-once, complete-once protocol: every non-nil spec returned by
 // GetNextTestToRun must eventually be passed to MarkTestComplete exactly once, including
@@ -22,32 +60,113 @@ type Scheduler interface {
 	// This method can be safely called from multiple goroutines concurrently.
 	GetNextTestToRun(ctx context.Context) *ExtensionTestSpec
 
-	// MarkTestComplete marks a test as complete, cleaning up its conflicts and taints.
-	// This may unblock other tests that were waiting.
+	// MarkTestComplete marks a test as complete, cleaning up its conflicts, taints, and
+	// pool reservations. This may unblock other tests that were waiting.
 	// This method can be safely called from multiple goroutines concurrently.
 	MarkTestComplete(spec *ExtensionTestSpec)
 }
 
-// testScheduler manages test scheduling based on conflicts, taints, and tolerations.
-// It maintains an ordered queue of tests and provides thread-safe scheduling operations.
+// SchedulerDiagnostics provides observability into scheduler state.
+// The testScheduler implements this interface; callers can type-assert to access it.
+type SchedulerDiagnostics interface {
+	// GetSnapshot returns a point-in-time view of the scheduler's internal state
+	// for diagnostics and external observability (e.g., stall detection).
+	GetSnapshot() SchedulerSnapshot
+}
+
+// testScheduler manages test scheduling based on conflicts, taints, tolerations,
+// and named resource pool capacity. It maintains an ordered queue of tests and
+// provides thread-safe scheduling operations.
 type testScheduler struct {
 	mu               sync.Mutex
-	cond             *sync.Cond // condition variable to signal when tests complete
+	cond             *sync.Cond                 // condition variable to signal when tests complete
 	tests            []*ExtensionTestSpec
 	runningConflicts map[string]sets.Set[string] // tracks which conflicts are running per group: group -> set of conflicts
 	activeTaints     map[string]int              // tracks how many tests are currently applying each taint
+	poolCapacity     map[string]int              // total capacity per pool (nil if no pools configured)
+	poolAvailable    map[string]int              // currently available per pool
+	activeCount      int                         // tests dispatched but not yet completed
+	accessor         func(Scheduler)
 }
 
 // NewScheduler creates a test scheduler. It accepts tests in any order and schedules
-// them based on isolation requirements (conflicts, taints, tolerations).
-func NewScheduler(tests []*ExtensionTestSpec) Scheduler {
+// them based on isolation requirements (conflicts, taints, tolerations) and optional
+// pool capacity constraints. When pool capacity is configured via WithResourcePoolCapacity,
+// the constructor validates that no test demands more than the total pool capacity,
+// references only defined pools, and has non-negative demand.
+func NewScheduler(tests []*ExtensionTestSpec, opts ...SchedulerOption) (Scheduler, error) {
 	ts := &testScheduler{
 		tests:            append([]*ExtensionTestSpec(nil), tests...),
 		runningConflicts: make(map[string]sets.Set[string]),
 		activeTaints:     make(map[string]int),
 	}
 	ts.cond = sync.NewCond(&ts.mu)
-	return ts
+
+	for _, opt := range opts {
+		opt(ts)
+	}
+
+	if ts.poolCapacity != nil {
+		for pool, capacity := range ts.poolCapacity {
+			if capacity < 0 {
+				return nil, fmt.Errorf("pool %q has negative capacity (%d)", pool, capacity)
+			}
+		}
+		for _, t := range tests {
+			for pool, demand := range t.Resources.ResourcePools {
+				if demand < 0 {
+					return nil, fmt.Errorf("test %q has negative demand (%d) for pool %q", t.Name, demand, pool)
+				}
+				if demand == 0 {
+					fmt.Fprintf(os.Stderr, "[scheduler] WARNING: test %q declares zero demand for pool %q (likely misconfiguration)\n", t.Name, pool)
+				}
+				poolCap, ok := ts.poolCapacity[pool]
+				if !ok {
+					return nil, fmt.Errorf("test %q declares pool %q but no capacity defined for it", t.Name, pool)
+				}
+				if demand > poolCap {
+					return nil, fmt.Errorf("test %q demands %d units of pool %q but total capacity is %d",
+						t.Name, demand, pool, poolCap)
+				}
+			}
+		}
+	} else {
+		for _, t := range tests {
+			if len(t.Resources.ResourcePools) > 0 {
+				fmt.Fprintf(os.Stderr, "[scheduler] WARNING: test %q declares resource pool demands but no pool capacity is configured\n", t.Name)
+				break
+			}
+		}
+	}
+
+	if ts.accessor != nil {
+		ts.accessor(ts)
+	}
+
+	return ts, nil
+}
+
+// GetSnapshot returns a point-in-time snapshot of the scheduler's internal state.
+func (ts *testScheduler) GetSnapshot() SchedulerSnapshot {
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+
+	snap := SchedulerSnapshot{
+		QueueLength: len(ts.tests),
+		ActiveCount: ts.activeCount,
+	}
+
+	if len(ts.tests) > 0 {
+		snap.QueueFront = ts.tests[0].Name
+		snap.QueueFrontResourcePools = maps.Clone(ts.tests[0].Resources.ResourcePools)
+	}
+
+	if ts.poolCapacity != nil {
+		snap.ResourcePoolCapacity = maps.Clone(ts.poolCapacity)
+		snap.ResourcePoolAvailable = maps.Clone(ts.poolAvailable)
+	}
+
+	return snap
 }
 
 // GetNextTestToRun blocks until a test is available to run, or returns nil
@@ -98,7 +217,10 @@ func (ts *testScheduler) GetNextTestToRun(ctx context.Context) *ExtensionTestSpe
 			// Check if test can tolerate all currently active taints
 			canTolerate := ts.canTolerateTaints(spec)
 
-			if !hasConflict && canTolerate {
+			// Check if pool capacity is available for this test
+			hasCapacity := ts.hasPoolCapacity(spec)
+
+			if !hasConflict && canTolerate && hasCapacity {
 				isolation := &spec.Resources.Isolation
 
 				// Found a runnable test - ATOMICALLY:
@@ -112,10 +234,23 @@ func (ts *testScheduler) GetNextTestToRun(ctx context.Context) *ExtensionTestSpe
 					ts.activeTaints[taint]++
 				}
 
-				// 3. Remove test from queue
+				// 3. Decrement pool availability and log transitions
+				if ts.poolCapacity != nil {
+					for pool, demand := range spec.Resources.ResourcePools {
+						before := ts.poolAvailable[pool]
+						ts.poolAvailable[pool] -= demand
+						fmt.Fprintf(os.Stderr, "[scheduler] dispatch %s (pool %s: %d->%d/%d available)\n",
+							spec.Name, pool, before, ts.poolAvailable[pool], ts.poolCapacity[pool])
+					}
+				}
+
+				// 4. Track active count
+				ts.activeCount++
+
+				// 5. Remove test from queue
 				ts.tests = append(ts.tests[:i], ts.tests[i+1:]...)
 
-				// 4. Return the test (now safe to run)
+				// 6. Return the test (now safe to run)
 				return spec
 			}
 		}
@@ -163,8 +298,21 @@ func (ts *testScheduler) canTolerateTaints(spec *ExtensionTestSpec) bool {
 	return true
 }
 
-// MarkTestComplete marks all conflicts and taints of a spec as no longer running/active
-// and signals waiting workers that blocked tests may now be runnable.
+// hasPoolCapacity checks if the scheduler has enough capacity in all pools for the spec.
+func (ts *testScheduler) hasPoolCapacity(spec *ExtensionTestSpec) bool {
+	if ts.poolCapacity == nil || len(spec.Resources.ResourcePools) == 0 {
+		return true
+	}
+	for pool, demand := range spec.Resources.ResourcePools {
+		if ts.poolAvailable[pool] < demand {
+			return false
+		}
+	}
+	return true
+}
+
+// MarkTestComplete marks all conflicts, taints, and pool reservations of a spec as
+// no longer running/active and signals waiting workers that blocked tests may now be runnable.
 // This should be called after a test completes execution.
 func (ts *testScheduler) MarkTestComplete(spec *ExtensionTestSpec) {
 	ts.mu.Lock()
@@ -191,6 +339,26 @@ func (ts *testScheduler) MarkTestComplete(spec *ExtensionTestSpec) {
 		if ts.activeTaints[taint] <= 0 {
 			delete(ts.activeTaints, taint)
 		}
+	}
+
+	// Return pool units and log transitions
+	if ts.poolCapacity != nil {
+		for pool, demand := range spec.Resources.ResourcePools {
+			before := ts.poolAvailable[pool]
+			ts.poolAvailable[pool] += demand
+			if ts.poolAvailable[pool] > ts.poolCapacity[pool] {
+				fmt.Fprintf(os.Stderr, "[scheduler] WARNING: pool %q overflow: available %d > capacity %d, capping\n",
+					pool, ts.poolAvailable[pool], ts.poolCapacity[pool])
+				ts.poolAvailable[pool] = ts.poolCapacity[pool]
+			}
+			fmt.Fprintf(os.Stderr, "[scheduler] complete %s (pool %s: %d->%d/%d available)\n",
+				spec.Name, pool, before, ts.poolAvailable[pool], ts.poolCapacity[pool])
+		}
+	}
+
+	// Track active count
+	if ts.activeCount > 0 {
+		ts.activeCount--
 	}
 
 	// Signal waiting workers that the state has changed

@@ -12,7 +12,6 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/origin/test/extended/util"
-	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
@@ -90,7 +89,7 @@ func ensurePodWithLabelReady(oc *exutil.CLI, ns, label string) {
 		logs, _ := oc.AsAdmin().WithoutNamespace().Run("logs").Args("-n", ns, "-l", label, "--tail=10").Output()
 		e2e.Logf("The logs of all labeled pods are:\n%v", logs)
 	}
-	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("max time reached but the pods with label %v are not ready", label))
+	assertWaitPollNoErr(err, fmt.Sprintf("max time reached but the pods with label %v are not ready", label))
 }
 
 func setEnvVariable(oc *exutil.CLI, ns, resource, envstring string) {
@@ -128,14 +127,14 @@ func ensureIpfailoverMasterBackup(oc *exutil.CLI, ns string, podList []string) (
 	// The sleep is given for the election process to finish
 	time.Sleep(10 * time.Second)
 	waitErr := wait.Poll(3*time.Second, 90*time.Second, func() (bool, error) {
-		podLogs1, err1 := compat_otp.GetSpecificPodLogs(oc, ns, "", podList[0], "Entering")
+		podLogs1, err1 := getSpecificPodLogs(oc, ns, "", podList[0], "Entering")
 		if err1 != nil {
 			// Pod logs might not be ready yet or grep found no matches, retry
 			return false, nil
 		}
 		logList1 := strings.Split((strings.TrimSpace(podLogs1)), "\n")
 		e2e.Logf("The first pod log's failover status:- %v", podLogs1)
-		podLogs2, err2 := compat_otp.GetSpecificPodLogs(oc, ns, "", podList[1], "Entering")
+		podLogs2, err2 := getSpecificPodLogs(oc, ns, "", podList[1], "Entering")
 		if err2 != nil {
 			// Pod logs might not be ready yet or grep found no matches, retry
 			return false, nil
@@ -161,7 +160,7 @@ func ensureIpfailoverMasterBackup(oc *exutil.CLI, ns string, podList []string) (
 		e2e.Logf("The ipfailover seems not yet converged, retrying again...")
 		return false, nil
 	})
-	compat_otp.AssertWaitPollNoErr(waitErr, fmt.Sprintf("Reached max time allowed but IPfailover seems not working as expected."))
+	assertWaitPollNoErr(waitErr, fmt.Sprintf("Reached max time allowed but IPfailover seems not working as expected."))
 	e2e.Logf("The Master pod is %v and Backup pod is %v", masterPod, backupPod)
 	return masterPod, backupPod
 }
@@ -247,7 +246,7 @@ func waitForPrimaryPod(oc *exutil.CLI, ns string, pod string, vip string) {
 	})
 	// for debugging
 	output1, _ := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", ns, pod, "--", "bash", "-c", "ip address").Output()
-	compat_otp.AssertWaitPollNoErr(waitErr, fmt.Sprintf("max time reached, pod failed to become master and the entire ip details of the pod is %v", output1))
+	assertWaitPollNoErr(waitErr, fmt.Sprintf("max time reached, pod failed to become master and the entire ip details of the pod is %v", output1))
 }
 
 func pollReadPodData(oc *exutil.CLI, ns, routername, executeCmd, searchString string) string {
@@ -263,7 +262,7 @@ func pollReadPodData(oc *exutil.CLI, ns, routername, executeCmd, searchString st
 		return true, nil
 	})
 	e2e.Logf("the matching part is: %s", output)
-	compat_otp.AssertWaitPollNoErr(waitErr, fmt.Sprintf("reached max time allowed but cannot find the search string."))
+	assertWaitPollNoErr(waitErr, fmt.Sprintf("reached max time allowed but cannot find the search string."))
 	return output
 }
 
@@ -277,7 +276,7 @@ func addPrivilegedLabelToNamespace(oc *exutil.CLI, ns string) {
 }
 
 func unicastIPFailover(oc *exutil.CLI, ns, failoverName string) {
-	platformtype := compat_otp.CheckPlatform(oc)
+	platformtype := checkPlatform(oc)
 
 	if platformtype == "nutanix" || platformtype == "none" {
 		getPodListByLabel(oc, oc.Namespace(), "ipfailover=hello-openshift")
@@ -353,7 +352,7 @@ func parseToJSON(oc *exutil.CLI, parameters []string) string {
 		jsonCfg = output
 		return true, nil
 	})
-	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("fail to process %v", parameters))
+	assertWaitPollNoErr(err, fmt.Sprintf("fail to process %v", parameters))
 	e2e.Logf("the file of resource is %s", jsonCfg)
 	return jsonCfg
 }
@@ -394,4 +393,51 @@ func checkIPStackType(oc *exutil.CLI) string {
 		return "ipv4single"
 	}
 	return ""
+}
+
+// Helper functions (inlined to avoid heavy openshift/origin dependency)
+
+// assertWaitPollNoErr asserts that a wait.Poll error is nil, with a custom message for timeouts
+func assertWaitPollNoErr(e error, msg string) {
+	if e == nil {
+		return
+	}
+	var err error
+	if strings.Compare(e.Error(), "timed out waiting for the condition") == 0 || strings.Compare(e.Error(), "context deadline exceeded") == 0 {
+		err = fmt.Errorf("case: %v\nerror: %s", g.CurrentSpecReport().FullText(), msg)
+	} else {
+		err = fmt.Errorf("case: %v\nerror: %s", g.CurrentSpecReport().FullText(), e.Error())
+	}
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+// getSpecificPodLogs returns the pod logs filtered by the specific string
+func getSpecificPodLogs(oc *exutil.CLI, namespace string, container string, podName string, filter string) (string, error) {
+	var cargs []string
+	if len(container) > 0 {
+		cargs = []string{"-n", namespace, "-c", container, podName}
+	} else {
+		cargs = []string{"-n", namespace, podName}
+	}
+	podLogs, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args(cargs...).OutputToFile("podLogs.txt")
+	if err != nil {
+		e2e.Logf("unable to get the pod (%s) logs", podName)
+		return podLogs, err
+	}
+	var filterCmd = ""
+	if len(filter) > 0 {
+		filterCmd = " | grep -i " + filter
+	}
+	filteredLogs, errCmd := exec.Command("bash", "-c", "cat "+podLogs+filterCmd).Output()
+	if errCmd != nil {
+		e2e.Logf("unable to filter the pod logs with filter: %s", filter)
+		return string(filteredLogs), errCmd
+	}
+	return string(filteredLogs), nil
+}
+
+// checkPlatform returns the cluster platform type in lowercase
+func checkPlatform(oc *exutil.CLI) string {
+	output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.type}").Output()
+	return strings.ToLower(output)
 }

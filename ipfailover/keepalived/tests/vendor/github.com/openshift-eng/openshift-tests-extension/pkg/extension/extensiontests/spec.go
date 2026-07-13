@@ -199,16 +199,9 @@ func (specs ExtensionTestSpecs) Names() []string {
 //
 // Tests are scheduled using isolation-aware scheduling that respects conflicts, taints, and
 // tolerations defined in each spec's Resources.Isolation field.
-func (specs ExtensionTestSpecs) Run(ctx context.Context, w ResultWriter, maxConcurrent int) ([]*ExtensionTestResult, error) {
+func (specs ExtensionTestSpecs) Run(ctx context.Context, w ResultWriter, maxConcurrent int, opts ...SchedulerOption) ([]*ExtensionTestResult, error) {
 	terminalFailures := atomic.Int64{}
 	nonTerminalFailures := atomic.Int64{}
-
-	// Execute beforeAll
-	for _, spec := range specs {
-		for _, beforeAllTask := range spec.beforeAll {
-			beforeAllTask.Run()
-		}
-	}
 
 	// if we have only a single spec to run, we do that differently than running multiple.
 	// multiple specs can run in parallel and do so by exec-ing back into the binary with `run-test` with a single test to execute.
@@ -216,8 +209,19 @@ func (specs ExtensionTestSpecs) Run(ctx context.Context, w ResultWriter, maxConc
 	// we need to run it in process.
 	runSingleSpec := len(specs) == 1
 
-	// Create scheduler with isolation-aware scheduling
-	scheduler := NewScheduler(specs)
+	// Create scheduler before BeforeAll hooks so validation errors don't leave
+	// setup side effects without cleanup.
+	scheduler, err := NewScheduler(specs, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create scheduler: %w", err)
+	}
+
+	// Execute beforeAll
+	for _, spec := range specs {
+		for _, beforeAllTask := range spec.beforeAll {
+			beforeAllTask.Run()
+		}
+	}
 
 	// Start consumers
 	var wg sync.WaitGroup

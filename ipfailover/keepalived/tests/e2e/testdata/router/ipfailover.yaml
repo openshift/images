@@ -60,7 +60,7 @@ objects:
             value: ${VRRP_ID_OFFSET}
           - name: OPENSHIFT_HA_REPLICA_COUNT
             value: "2"
-          - name: OPENSHIFT_HA_IPTABLES_CHAIN
+          - name: OPENSHIFT_HA_NFTABLES_RULE
             value: "INPUT"
           - name: OPENSHIFT_HA_PREEMPTION
             value: "nopreempt"

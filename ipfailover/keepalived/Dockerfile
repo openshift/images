@@ -1,6 +1,5 @@
-# Test extension builder stage (added by ote-migration)
+# Test extension builder stage
 FROM registry.ci.openshift.org/ocp/builder:rhel-9-golang-1.25-openshift-4.22 AS test-extension-builder
-RUN mkdir -p /go/src/github.com/openshift/ipfailover/keepalived
 WORKDIR /go/src/github.com/openshift/ipfailover/keepalived
 COPY . .
 RUN cd tests && \
@@ -22,7 +21,7 @@ RUN INSTALL_PKGS="kmod keepalived iproute psmisc nmap-ncat net-tools ipset ipset
     yum clean all
 COPY . /var/lib/ipfailover/keepalived/
 
-# Copy test extension binary (added by ote-migration)
+# Copy test extension binary
 COPY --from=test-extension-builder /go/src/github.com/openshift/ipfailover/keepalived/tests/bin/ipfailover-test-extension.tar.gz /usr/bin/
 
 LABEL io.k8s.display-name="OpenShift IP Failover" \
