@@ -5,7 +5,7 @@
 
 FROM registry.ci.openshift.org/ocp/4.20:base-rhel9
 
-RUN INSTALL_PKGS="iproute iputils iptables-nft" && \
+RUN INSTALL_PKGS="iproute iputils nftables" && \
     yum install -y $INSTALL_PKGS && \
     rpm -V $INSTALL_PKGS && \
     yum clean all
