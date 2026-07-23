@@ -28,6 +28,7 @@ RUN INSTALL_PKGS=" \
     echo 'skip_missing_names_on_install=0' >> /etc/yum.conf && \
     echo 'install_weak_deps=0' >> /etc/yum.conf && \
     dnf install -y --nodocs ${INSTALL_PKGS} && \
+    ( test -d /usr/share/zoneinfo || dnf reinstall -y --nodocs tzdata || dnf install -y --nodocs tzdata ) && \
     dnf clean all && rm -rf /var/cache/*
 
 # OKD-specific changes
