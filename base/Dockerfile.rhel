@@ -17,6 +17,7 @@ RUN INSTALL_PKGS=" \
     echo 'skip_missing_names_on_install=0' >> /etc/yum.conf && \
     yum install -y --setopt=tsflags=nodocs --setopt=install_weak_deps=False ${INSTALL_PKGS} && \
     ( test -e /usr/bin/python ||  alternatives --set python /usr/bin/python3 ) && \
+    ( test -d /usr/share/zoneinfo || yum reinstall -y tzdata || yum install -y tzdata ) && \
     yum clean all && rm -rf /var/cache/*
 
 # Enable x509 common name matching for golang 1.15 and beyond.
