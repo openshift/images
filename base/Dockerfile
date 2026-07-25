@@ -14,6 +14,7 @@ RUN INSTALL_PKGS=" \
       " && \
     echo 'skip_missing_names_on_install=0' >> /etc/yum.conf && \
     yum install -y ${INSTALL_PKGS} && \
+    ( test -d /usr/share/zoneinfo || yum reinstall -y tzdata || yum install -y tzdata ) && \
     yum clean all && \
     mkdir -p /var/lib/origin
 
