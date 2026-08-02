@@ -1,0 +1,3 @@
+# Build artifacts - binaries are built by CI, not committed
+bin/
+.DS_Store
