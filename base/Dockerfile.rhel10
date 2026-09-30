@@ -18,7 +18,6 @@ RUN INSTALL_PKGS=" \
 
 # OKD-specific changes
 RUN source /etc/os-release && [ "${ID}" != "centos" ] && exit 0; \
-    [ "${VERSION_ID}" = "10" ] || exit 0; \
     wget --no-verbose \
         --output-document=/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-NFV \
         https://www.centos.org/keys/RPM-GPG-KEY-CentOS-SIG-NFV && \
@@ -36,7 +35,6 @@ RUN source /etc/os-release && [ "${ID}" != "centos" ] && exit 0; \
 # DLRN supplies python3-cinderclient for CentOS Stream 10. Its upstream
 # configuration currently retains gpgcheck=0 for the permitted repositories.
 RUN source /etc/os-release && [ "${ID}" != "centos" ] && exit 0; \
-    [ "${VERSION_ID}" = "10" ] || exit 0; \
     wget --https-only --no-verbose \
         --output-document=/tmp/delorean.repo \
         https://trunk.rdoproject.org/centos10-master/podified-ci-testing/delorean.repo && \
@@ -44,68 +42,29 @@ RUN source /etc/os-release && [ "${ID}" != "centos" ] && exit 0; \
         --output-document=/tmp/delorean-deps.repo \
         https://trunk.rdoproject.org/centos10-master/delorean-deps.repo && \
     filter_repositories() { \
-        source_file="$1"; output_file="$2"; group="$3"; section=""; write_section=0; \
-        clients=0; common=0; keystone=0; testing=0; \
-        clients_url=0; common_url=0; keystone_url=0; testing_url=0; \
-        clients_enabled=0; common_enabled=0; keystone_enabled=0; testing_enabled=0; \
-        while IFS= read -r line || [ -n "$line" ]; do \
-            case "$line" in \
-                \[*\]) \
-                    section="${line#\[}"; section="${section%\]}"; write_section=0; \
-                    case "$group:$section" in \
-                        components:delorean-component-clients) \
-                            [ "$clients" -eq 0 ] || return 1; clients=1; write_section=1 ;; \
-                        components:delorean-component-common) \
-                            [ "$common" -eq 0 ] || return 1; common=1; write_section=1 ;; \
-                        components:delorean-component-keystone) \
-                            [ "$keystone" -eq 0 ] || return 1; keystone=1; write_section=1 ;; \
-                        dependencies:delorean-master-testing) \
-                            [ "$testing" -eq 0 ] || return 1; testing=1; write_section=1 ;; \
-                    esac; \
-                    [ "$write_section" -eq 1 ] && printf '%s\n' "$line" ;; \
-                *) \
-                    if [ "$write_section" -eq 1 ]; then \
-                        case "$line" in \
-                            baseurl=https://*) \
-                                case "$section" in \
-                                    delorean-component-clients) \
-                                        [ "$clients_url" -eq 0 ] || return 1; clients_url=1 ;; \
-                                    delorean-component-common) \
-                                        [ "$common_url" -eq 0 ] || return 1; common_url=1 ;; \
-                                    delorean-component-keystone) \
-                                        [ "$keystone_url" -eq 0 ] || return 1; keystone_url=1 ;; \
-                                    delorean-master-testing) \
-                                        [ "$testing_url" -eq 0 ] || return 1; testing_url=1 ;; \
-                                esac ;; \
-                            baseurl=*) return 1 ;; \
-                            enabled=1) \
-                                case "$section" in \
-                                    delorean-component-clients) \
-                                        [ "$clients_enabled" -eq 0 ] || return 1; clients_enabled=1 ;; \
-                                    delorean-component-common) \
-                                        [ "$common_enabled" -eq 0 ] || return 1; common_enabled=1 ;; \
-                                    delorean-component-keystone) \
-                                        [ "$keystone_enabled" -eq 0 ] || return 1; keystone_enabled=1 ;; \
-                                    delorean-master-testing) \
-                                        [ "$testing_enabled" -eq 0 ] || return 1; testing_enabled=1 ;; \
-                                esac ;; \
-                            enabled=*) return 1 ;; \
-                        esac; \
-                        printf '%s\n' "$line"; \
-                    fi ;; \
-            esac; \
-        done < "$source_file" > "$output_file"; \
-        case "$group" in \
-            components) \
-                [ "$clients" -eq 1 ] && [ "$common" -eq 1 ] && [ "$keystone" -eq 1 ] && \
-                    [ "$clients_url" -eq 1 ] && [ "$common_url" -eq 1 ] && [ "$keystone_url" -eq 1 ] && \
-                    [ "$clients_enabled" -eq 1 ] && [ "$common_enabled" -eq 1 ] && [ "$keystone_enabled" -eq 1 ] ;; \
-            dependencies) \
-                [ "$testing" -eq 1 ] && [ "$testing_url" -eq 1 ] && [ "$testing_enabled" -eq 1 ] ;; \
-        esac; \
+        python3 -c "$( \
+            printf '%s\n' \
+                'import configparser, sys' \
+                'source, output, *expected = sys.argv[1:]' \
+                'config = configparser.RawConfigParser(interpolation=None, strict=True)' \
+                'config.optionxform = str' \
+                'with open(source) as stream: config.read_file(stream)' \
+                'if config.defaults(): raise ValueError("defaults are not allowed")' \
+                'for section in expected:' \
+                '    if not config.has_section(section): raise ValueError(f"missing {section}")' \
+                '    values = config[section]' \
+                '    if values.get("enabled") != "1": raise ValueError(f"disabled {section}")' \
+                '    if set(values).intersection(("mirrorlist", "metalink")) or not values.get("baseurl", "").startswith("https://"): raise ValueError(f"non-HTTPS {section}")' \
+                'with open(output, "w") as stream:' \
+                '    for section in expected:' \
+                '        stream.write(f"[{section}]\n")' \
+                '        for key, value in config.items(section): stream.write(f"{key}={value}\n")' \
+        )" "$@"; \
     }; \
-    filter_repositories /tmp/delorean.repo /etc/yum.repos.d/delorean.repo components && \
-    filter_repositories /tmp/delorean-deps.repo /etc/yum.repos.d/delorean-deps.repo dependencies && \
+    filter_repositories /tmp/delorean.repo /etc/yum.repos.d/delorean.repo \
+        delorean-component-clients delorean-component-common delorean-component-keystone && \
+    filter_repositories /tmp/delorean-deps.repo /etc/yum.repos.d/delorean-deps.repo \
+        delorean-master-testing && \
     dnf --disablerepo='*' --enablerepo=delorean-component-clients makecache && \
     dnf --disablerepo='*' --enablerepo=delorean-component-common makecache && \
     dnf --disablerepo='*' --enablerepo=delorean-component-keystone makecache && \
