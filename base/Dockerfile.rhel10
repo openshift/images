@@ -16,6 +16,61 @@ RUN INSTALL_PKGS=" \
     dnf install -y --nodocs ${INSTALL_PKGS} && \
     dnf clean all && rm -rf /var/cache/*
 
+# OKD-specific changes
+RUN source /etc/os-release && [ "${ID}" != "centos" ] && exit 0; \
+    wget --no-verbose \
+        --output-document=/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-NFV \
+        https://www.centos.org/keys/RPM-GPG-KEY-CentOS-SIG-NFV && \
+    printf '%s\n' \
+        '[centos-nfv-openvswitch]' \
+        'name=CentOS Stream 10 - NFV Open vSwitch' \
+        'baseurl=https://mirror.stream.centos.org/SIGs/10-stream/nfv/$basearch/openvswitch-2/' \
+        'enabled=1' \
+        'gpgcheck=1' \
+        'repo_gpgcheck=1' \
+        'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-NFV' \
+        > /etc/yum.repos.d/centos-nfv-openvswitch.repo && \
+    dnf clean all && rm -rf /var/cache/*
+
+# DLRN supplies python3-cinderclient for CentOS Stream 10. Its upstream
+# configuration currently retains gpgcheck=0 for the permitted repositories.
+RUN source /etc/os-release && [ "${ID}" != "centos" ] && exit 0; \
+    wget --https-only --no-verbose \
+        --output-document=/tmp/delorean.repo \
+        https://trunk.rdoproject.org/centos10-master/podified-ci-testing/delorean.repo && \
+    wget --https-only --no-verbose \
+        --output-document=/tmp/delorean-deps.repo \
+        https://trunk.rdoproject.org/centos10-master/delorean-deps.repo && \
+    filter_repositories() { \
+        python3 -c "$( \
+            printf '%s\n' \
+                'import configparser, sys' \
+                'source, output, *expected = sys.argv[1:]' \
+                'config = configparser.RawConfigParser(interpolation=None, strict=True)' \
+                'config.optionxform = str' \
+                'with open(source) as stream: config.read_file(stream)' \
+                'if config.defaults(): raise ValueError("defaults are not allowed")' \
+                'for section in expected:' \
+                '    if not config.has_section(section): raise ValueError(f"missing {section}")' \
+                '    values = config[section]' \
+                '    if values.get("enabled") != "1": raise ValueError(f"disabled {section}")' \
+                '    if set(values).intersection(("mirrorlist", "metalink")) or not values.get("baseurl", "").startswith("https://"): raise ValueError(f"non-HTTPS {section}")' \
+                'with open(output, "w") as stream:' \
+                '    for section in expected:' \
+                '        stream.write(f"[{section}]\n")' \
+                '        for key, value in config.items(section): stream.write(f"{key}={value}\n")' \
+        )" "$@"; \
+    }; \
+    filter_repositories /tmp/delorean.repo /etc/yum.repos.d/delorean.repo \
+        delorean-component-clients delorean-component-common delorean-component-keystone && \
+    filter_repositories /tmp/delorean-deps.repo /etc/yum.repos.d/delorean-deps.repo \
+        delorean-master-testing && \
+    dnf --disablerepo='*' --enablerepo=delorean-component-clients makecache && \
+    dnf --disablerepo='*' --enablerepo=delorean-component-common makecache && \
+    dnf --disablerepo='*' --enablerepo=delorean-component-keystone makecache && \
+    dnf --disablerepo='*' --enablerepo=delorean-master-testing makecache && \
+    dnf clean all && rm -rf /var/cache/* /tmp/delorean.repo /tmp/delorean-deps.repo
+
 
 LABEL io.k8s.display-name="OpenShift Base RHEL10" \
       io.k8s.description="This is the base image from which all OpenShift RHEL10 images inherit."
