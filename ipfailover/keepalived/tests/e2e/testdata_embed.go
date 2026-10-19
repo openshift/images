@@ -37,11 +37,13 @@ func ipfailoverTemplatePath() string {
 		if ipfailoverTemplateErr != nil {
 			return
 		}
+		// Record the directory as soon as it exists, so that it is still
+		// cleaned up if writing the template below fails.
+		ipfailoverTemplateDir = dir
 		path := filepath.Join(dir, "ipfailover.yaml")
 		if ipfailoverTemplateErr = os.WriteFile(path, ipfailoverTemplate, 0644); ipfailoverTemplateErr != nil {
 			return
 		}
-		ipfailoverTemplateDir = dir
 		ipfailoverTemplateFile = path
 	})
 	o.Expect(ipfailoverTemplateErr).NotTo(o.HaveOccurred(), "could not materialize the embedded ipfailover template")
