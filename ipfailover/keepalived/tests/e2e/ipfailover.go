@@ -3,7 +3,6 @@ package router
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -93,8 +92,7 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 	})
 
 	g.It("Author:hongli-NonHyperShiftHOST-ConnectedOnly-Critical-41025-support to deploy ipfailover [Serial]", func() {
-		buildPruningBaseDir := "e2e/testdata/router"
-		customTemp := filepath.Join(buildPruningBaseDir, "ipfailover.yaml")
+		customTemp := ipfailoverTemplatePath()
 		var (
 			ipf = ipfailoverDescription{
 				name:        "ipf-41025",
@@ -117,8 +115,7 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 	})
 
 	g.It("Author:mjoseph-NonHyperShiftHOST-ConnectedOnly-Medium-41027-pod and service automatically switched over to standby when master fails [Disruptive]", func() {
-		buildPruningBaseDir := "e2e/testdata/router"
-		customTemp := filepath.Join(buildPruningBaseDir, "ipfailover.yaml")
+		customTemp := ipfailoverTemplatePath()
 		var (
 			ipf = ipfailoverDescription{
 				name:        "ipf-41027",
@@ -175,8 +172,7 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 	})
 
 	g.It("Author:mjoseph-NonHyperShiftHOST-ConnectedOnly-Medium-41028-ipfailover configuration can be customized by ENV [Serial]", func() {
-		buildPruningBaseDir := "e2e/testdata/router"
-		customTemp := filepath.Join(buildPruningBaseDir, "ipfailover.yaml")
+		customTemp := ipfailoverTemplatePath()
 		var (
 			ipf = ipfailoverDescription{
 				name:        "ipf-41028",
@@ -246,8 +242,7 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 				g.Skip("This test will not work for Nutanix")
 			}
 		}
-		buildPruningBaseDir := "e2e/testdata/router"
-		customTemp := filepath.Join(buildPruningBaseDir, "ipfailover.yaml")
+		customTemp := ipfailoverTemplatePath()
 		var (
 			ipf = ipfailoverDescription{
 				name:        "ipf-41029",
@@ -281,8 +276,7 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 	})
 
 	g.It("Author:mjoseph-NonHyperShiftHOST-ConnectedOnly-High-41030-preemption strategy for keepalived ipfailover [Disruptive]", func() {
-		buildPruningBaseDir := "e2e/testdata/router"
-		customTemp := filepath.Join(buildPruningBaseDir, "ipfailover.yaml")
+		customTemp := ipfailoverTemplatePath()
 		var (
 			ipf = ipfailoverDescription{
 				name:        "ipf-41030",
@@ -354,8 +348,7 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 	})
 
 	g.It("Author:mjoseph-NonHyperShiftHOST-ConnectedOnly-Medium-49214-Excluding the existing VRRP cluster ID from ipfailover deployments [Serial]", func() {
-		buildPruningBaseDir := "e2e/testdata/router"
-		customTemp := filepath.Join(buildPruningBaseDir, "ipfailover.yaml")
+		customTemp := ipfailoverTemplatePath()
 		var (
 			ipf = ipfailoverDescription{
 				name:        "ipf-49214",

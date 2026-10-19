@@ -1,10 +1,10 @@
 package router
+
 import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -106,12 +106,13 @@ func describePodResource(oc *exutil.CLI, podName, namespace string) string {
 
 func getImagePullSpecFromPayload(oc *exutil.CLI, image string) string {
 	var pullspec string
-	baseDir := "e2e/testdata/router"
-	indexTmpPath := filepath.Join(baseDir, getRandomString())
-	dockerconfigjsonpath := filepath.Join(indexTmpPath, ".dockerconfigjson")
-	defer exec.Command("rm", "-rf", indexTmpPath).Output()
-	err := os.MkdirAll(indexTmpPath, 0700)
+	// Use a temporary directory rather than a path relative to the working
+	// directory: this code runs from a test extension binary whose working
+	// directory is not guaranteed to be writable.
+	indexTmpPath, err := os.MkdirTemp("", "ipfailover-pullsecret-")
 	o.Expect(err).NotTo(o.HaveOccurred())
+	defer os.RemoveAll(indexTmpPath)
+	dockerconfigjsonpath := filepath.Join(indexTmpPath, ".dockerconfigjson")
 	_, err = oc.AsAdmin().WithoutNamespace().Run("extract").Args("secret/pull-secret", "-n", "openshift-config", "--confirm", "--to="+indexTmpPath).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	pullspec, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("release", "info", "--image-for="+image, "-a", dockerconfigjsonpath).Output()
@@ -383,7 +384,6 @@ func readPodData(oc *exutil.CLI, podname string, ns string, executeCmd string, s
 	e2e.Logf("the matching part is: %s", output)
 	return output
 }
-
 
 func checkIPStackType(oc *exutil.CLI) string {
 	svcNetwork, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("network.operator", "cluster", "-o=jsonpath={.spec.serviceNetwork}").Output()
