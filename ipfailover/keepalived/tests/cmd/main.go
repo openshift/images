@@ -17,7 +17,7 @@ import (
 	framework "k8s.io/kubernetes/test/e2e/framework"
 
 	// Import test packages from this module
-	_ "github.com/openshift/images/ipfailover-tests-extension/e2e"
+	ipfailovertests "github.com/openshift/images/ipfailover-tests-extension/e2e"
 )
 
 func main() {
@@ -72,6 +72,10 @@ func main() {
 		// Set lifecycle to Blocking (tests should fail the suite if they fail)
 		spec.Lifecycle = et.LifecycleBlocking
 	})
+
+	// Remove the temporary directory holding the materialized test data once
+	// every spec in this process has finished.
+	componentSpecs.AddAfterAll(ipfailovertests.CleanupTestData)
 
 	// Add filtered component specs to extension
 	ext.AddSpecs(componentSpecs)
