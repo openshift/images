@@ -18,7 +18,6 @@ RUN INSTALL_PKGS=" \
 
 # OKD-specific changes
 RUN source /etc/os-release && [ "${ID}" != "centos" ] && exit 0; \
-    dnf install -y --nodocs --setopt=install_weak_deps=False dnf-plugins-core && \
     dnf config-manager --set-enabled rt && \
     wget --no-verbose \
         --output-document=/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-NFV \
