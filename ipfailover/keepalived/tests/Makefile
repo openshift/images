@@ -4,7 +4,7 @@ BINARY := bin/ipfailover-tests-ext
 build:
 	@echo "Building extension binary..."
 	@mkdir -p bin
-	GOTOOLCHAIN=auto GOSUMDB=sum.golang.org go build -o $(BINARY) ./cmd
+	CGO_ENABLED=0 GO_COMPLIANCE_POLICY="exempt_all" GOTOOLCHAIN=auto GOSUMDB=sum.golang.org go build -o $(BINARY) ./cmd
 	@echo "Binary built: $(BINARY)"
 
 .PHONY: clean

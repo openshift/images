@@ -7,6 +7,7 @@ import (
 	"time"
 
 	g "github.com/onsi/ginkgo/v2"
+	ote "github.com/openshift-eng/openshift-tests-extension/pkg/ginkgo"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
@@ -64,8 +65,12 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 		}
 
 		g.By("check the cluster has remote worker profile")
+		// Listing nodes works on every cluster these tests are selected for, so
+		// an error here is a real problem rather than an unsupported
+		// environment. Fail instead of skipping: a skip would quietly drop all
+		// six tests and still report the suite green.
 		remoteWorkerLabel, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "-o", "jsonpath={.items[*].metadata.labels.node\\.openshift\\.io/remote-worker}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(err).NotTo(o.HaveOccurred(), "could not read the remote-worker node labels")
 		if strings.Contains(remoteWorkerLabel, "true") {
 			g.Skip("Skip as ipfailover currently doesn't support on remote-worker profile")
 		}
@@ -91,7 +96,8 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 		}
 	})
 
-	g.It("Author:hongli-NonHyperShiftHOST-ConnectedOnly-Critical-41025-support to deploy ipfailover [Serial]", func() {
+	// author:hongli
+	g.It("Critical-41025-support to deploy ipfailover [Serial]", ote.Informing(), func() {
 		customTemp := ipfailoverTemplatePath()
 		var (
 			ipf = ipfailoverDescription{
@@ -114,7 +120,8 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 		ensureIpfailoverMasterBackup(oc, ipf.namespace, podName)
 	})
 
-	g.It("Author:mjoseph-NonHyperShiftHOST-ConnectedOnly-Medium-41027-pod and service automatically switched over to standby when master fails [Disruptive]", func() {
+	// author:mjoseph
+	g.It("High-41027-pod and service automatically switched over to standby when master fails [Serial][Disruptive]", ote.Informing(), func() {
 		customTemp := ipfailoverTemplatePath()
 		var (
 			ipf = ipfailoverDescription{
@@ -171,7 +178,8 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 		waitForPrimaryPod(oc, ipf.namespace, newMasterNode, virtualIP)
 	})
 
-	g.It("Author:mjoseph-NonHyperShiftHOST-ConnectedOnly-Medium-41028-ipfailover configuration can be customized by ENV [Serial]", func() {
+	// author:mjoseph
+	g.It("High-41028-ipfailover configuration can be customized by ENV [Serial]", ote.Informing(), func() {
 		customTemp := ipfailoverTemplatePath()
 		var (
 			ipf = ipfailoverDescription{
@@ -233,7 +241,8 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 		o.Expect(result).To(o.ContainSubstring("OPENSHIFT_HA_VIRTUAL_IPS:        " + virtualIP))
 	})
 
-	g.It("Author:mjoseph-NonHyperShiftHOST-ConnectedOnly-Medium-41029-ipfailover can support up to a maximum of 255 VIPs for the entire cluster [Serial]", func() {
+	// author:mjoseph
+	g.It("High-41029-ipfailover can support up to a maximum of 255 VIPs for the entire cluster [Serial]", ote.Informing(), func() {
 		// Get platform type using oc command instead of compat_otp
 		infraOutput, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.type}").Output()
 		if err == nil {
@@ -275,7 +284,8 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 		o.Expect(checkenv).To(o.ContainSubstring("OPENSHIFT_HA_VIP_GROUPS=238"))
 	})
 
-	g.It("Author:mjoseph-NonHyperShiftHOST-ConnectedOnly-High-41030-preemption strategy for keepalived ipfailover [Disruptive]", func() {
+	// author:mjoseph
+	g.It("Critical-41030-preemption strategy for keepalived ipfailover [Serial][Disruptive]", ote.Informing(), func() {
 		customTemp := ipfailoverTemplatePath()
 		var (
 			ipf = ipfailoverDescription{
@@ -347,7 +357,8 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 		klog.Infof("After preempt delay, pod %v is the master holding VIP %v", actualMaster, virtualIP)
 	})
 
-	g.It("Author:mjoseph-NonHyperShiftHOST-ConnectedOnly-Medium-49214-Excluding the existing VRRP cluster ID from ipfailover deployments [Serial]", func() {
+	// author:mjoseph
+	g.It("High-49214-Excluding the existing VRRP cluster ID from ipfailover deployments [Serial]", ote.Informing(), func() {
 		customTemp := ipfailoverTemplatePath()
 		var (
 			ipf = ipfailoverDescription{

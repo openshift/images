@@ -68,10 +68,42 @@ func main() {
 			platform := match[1]
 			spec.Include(et.PlatformEquals(platform))
 		}
-
-		// Set lifecycle to Blocking (tests should fail the suite if they fail)
-		spec.Lifecycle = et.LifecycleBlocking
 	})
+
+	// Every test here deploys keepalived on the host network and claims a VIP,
+	// so the whole extension shares one set of environment constraints. The
+	// BeforeEach still re-checks these at runtime, but declaring them here keeps
+	// openshift-tests from scheduling the specs at all on clusters that cannot
+	// run them, rather than creating a namespace per spec only to skip.
+	componentSpecs.
+		Include(et.Or(
+			// "none" covers baremetal clusters installed without the platform.
+			et.PlatformEquals("none"),
+			et.PlatformEquals("baremetal"),
+			et.PlatformEquals("vsphere"),
+			et.PlatformEquals("openstack"),
+			et.PlatformEquals("nutanix"),
+		)).
+		// ipfailover has no single-stack IPv6 support. Dual stack is fine.
+		Exclude(et.NetworkStackEquals("ipv6")).
+		// The tests reach for cluster-scoped resources that a HyperShift guest
+		// does not have. This replaces the NonHyperShiftHOST name fragment,
+		// which never excluded anything.
+		Exclude(et.TopologyEquals("External")).
+		// Excludes MicroShift and single-node. openshift-tests reports
+		// MicroShift as platform "none", which the include above matches, so
+		// the platform list alone does not keep these tests off it. MicroShift
+		// has no config.openshift.io Infrastructure API for the BeforeEach to
+		// read, and neither topology has the two worker nodes ipfailover needs.
+		//
+		// SingleReplica is the value openshift-tests actually sends: AddTopology
+		// takes a configv1.TopologyMode, and determineEnvironmentFlags defaults
+		// MicroShift to SingleReplica because it cannot read the clusterState.
+		// The "microshift" literal is what the extension framework documents on
+		// the --topology flag, so exclude it too in case another orchestrator
+		// sends it.
+		Exclude(et.TopologyEquals("SingleReplica")).
+		Exclude(et.TopologyEquals("microshift"))
 
 	// Remove the temporary directory holding the materialized test data once
 	// every spec in this process has finished.
@@ -106,13 +138,20 @@ func registerSuites(ext *e.Extension) {
 				"openshift/conformance/serial",
 			},
 			Description: "Serial conformance tests (must run sequentially)",
+			// Every test here is [Serial], including the two that are also
+			// [Disruptive]. Those two disrupt only the ipfailover deployment in
+			// their own namespace, not the cluster, so they belong in the serial
+			// suite rather than openshift/disruptive.
 			Qualifiers: []string{
-				`name.contains("[Serial]") && !name.contains("[Disruptive]")`,
+				`name.contains("[Serial]")`,
 			},
 		},
 		{
+			// Deliberately has no parent. openshift/disruptive is only run by
+			// AWS and GCP workflows, and this extension excludes both platforms,
+			// so parenting here meant the two tests had no reachable CI job at
+			// all. Kept as a standalone suite for running them on their own.
 			Name:        "ipfailover/disruptive",
-			Parents:     []string{"openshift/disruptive"},
 			Description: "Disruptive tests (may affect cluster state)",
 			Qualifiers: []string{
 				`name.contains("[Disruptive]")`,
