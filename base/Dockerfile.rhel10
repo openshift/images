@@ -17,6 +17,7 @@ RUN INSTALL_PKGS=" \
     dnf clean all && rm -rf /var/cache/*
 
 # OKD-specific changes
+RUN install -d -m 0755 /run/lock
 RUN source /etc/os-release && [ "${ID}" != "centos" ] && exit 0; \
     wget --no-verbose \
         --output-document=/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-NFV \
