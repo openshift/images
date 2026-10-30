@@ -18,7 +18,12 @@ RUN INSTALL_PKGS="kmod keepalived iproute psmisc nmap-ncat net-tools ipset ipset
     yum install -y $INSTALL_PKGS && \
     rpm -V $INSTALL_PKGS && \
     yum clean all
-COPY . /var/lib/ipfailover/keepalived/
+# Copy only what the runtime needs. A plain "COPY ." would also pull in
+# tests/, whose vendor tree alone is ~175MB, into the payload image. The
+# builder stage above still gets tests/ straight from the build context.
+COPY conf/ /var/lib/ipfailover/keepalived/conf/
+COPY lib/ /var/lib/ipfailover/keepalived/lib/
+COPY monitor.sh remove-failover.sh README.md /var/lib/ipfailover/keepalived/
 
 # Copy test extension binary (raw gzip per OTE convention)
 COPY --from=test-extension-builder /go/src/github.com/openshift/ipfailover/keepalived/tests/bin/ipfailover-tests-ext.gz /usr/bin/
