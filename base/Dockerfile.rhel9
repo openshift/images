@@ -1,6 +1,6 @@
 # Builder stage: Configure crypto-policies with post-quantum support
 # Skip PQ crypto-policies for CentOS (OKD) builds - the PQ module is not available
-FROM registry.ci.openshift.org/ocp/5.0:base-rhel9 AS builder
+FROM registry.ci.openshift.org/ocp/5.1:base-rhel9 AS builder
 
 RUN source /etc/os-release && [ "${ID}" = "centos" ] || \
     (dnf install -y --nodocs crypto-policies-scripts && \
@@ -8,7 +8,7 @@ RUN source /etc/os-release && [ "${ID}" = "centos" ] || \
      dnf clean all && rm -rf /var/cache/*)
 
 # Final stage: Base RHEL9 image with PQ crypto-policies
-FROM registry.ci.openshift.org/ocp/5.0:base-rhel9
+FROM registry.ci.openshift.org/ocp/5.1:base-rhel9
 
 # Copy crypto-policies configuration from builder stage
 # For CentOS builds, this will just copy the default policies since PQ setup was skipped
