@@ -76,13 +76,28 @@ func main() {
 	// openshift-tests from scheduling the specs at all on clusters that cannot
 	// run them, rather than creating a namespace per spec only to skip.
 	componentSpecs.
-		Include(et.Or(
-			// "none" covers baremetal clusters installed without the platform.
-			et.PlatformEquals("none"),
-			et.PlatformEquals("baremetal"),
-			et.PlatformEquals("vsphere"),
-			et.PlatformEquals("openstack"),
-			et.PlatformEquals("nutanix"),
+		Include(et.And(
+			et.Or(
+				// "none" covers baremetal clusters installed without the platform.
+				et.PlatformEquals("none"),
+				et.PlatformEquals("baremetal"),
+				et.PlatformEquals("vsphere"),
+				et.PlatformEquals("openstack"),
+				et.PlatformEquals("nutanix"),
+			),
+			// openshift-tests only sends --api-group when it can discover cluster
+			// state, which it cannot on MicroShift, so this group is present on
+			// every platform above and absent on MicroShift. The topology excludes
+			// below already keep MicroShift out via its SingleReplica/microshift
+			// topology, so this is a second, independent signal for the same
+			// cluster rather than new coverage by itself. It earns its place for
+			// what it protects in the BeforeEach: a direct invocation of this
+			// binary without environment flags bypasses every selector here, and
+			// then the only thing standing between discovery and running on
+			// MicroShift is the Infrastructure read in BeforeEach now failing hard
+			// on error instead of skipping. See openshift/router#871, which found
+			// the same gap in the Route tests.
+			et.APIGroupEnabled(clusterConfigAPIGroup),
 		)).
 		// ipfailover has no single-stack IPv6 support. Dual stack is fine.
 		Exclude(et.NetworkStackEquals("ipv6")).
@@ -128,6 +143,11 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+// clusterConfigAPIGroup is the API group that serves infrastructures.config.openshift.io
+// and networks.config.openshift.io, the resources the BeforeEach reads to determine
+// platform and network type. MicroShift does not serve this group.
+const clusterConfigAPIGroup = "config.openshift.io"
 
 // registerSuites registers test suites with proper categorization
 func registerSuites(ext *e.Extension) {

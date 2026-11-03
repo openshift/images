@@ -30,7 +30,12 @@ func init() {
 	exutil.WithCleanup(func() {})
 }
 
-var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
+// [Feature:Router] gives these tests Component Readiness ownership. OTE-run
+// tests report JUnit suite "openshift-tests" uniformly, so the ci-test-mapping
+// Suite:"Network_Edge" matcher never fires for them; the SIG matcher for
+// "Networking / router" requires sig-network-edge together with Feature:Router,
+// which this supplies. See openshift/router#871 for the same gap on Route tests.
+var _ = g.Describe("[OTP][sig-network-edge][Feature:Router] Network_Edge", func() {
 	defer g.GinkgoRecover()
 
 	// Use NewCLI which creates a namespace for each test (like openshift-tests-private)
@@ -39,11 +44,17 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 
 	g.BeforeEach(func() {
 		g.By("Check platforms")
-		// Get platform type using oc command instead of compat_otp
+		// infrastructures.config.openshift.io lives in the API group this
+		// extension's environment selectors already require (see
+		// clusterConfigAPIGroup in cmd/main.go), so a cluster reaching this line
+		// is expected to serve it. An error here is therefore a real failure --
+		// timeout, permission, or throttling -- not an unsupported environment.
+		// Fail instead of skipping: a skip would quietly drop all six tests and
+		// still report the suite green. See openshift/router#871, which found
+		// the equivalent skip-on-any-error swallowing registry errors in the
+		// Route tests.
 		infraOutput, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.type}").Output()
-		if err != nil {
-			g.Skip(fmt.Sprintf("Failed to get platform type: %v", err))
-		}
+		o.Expect(err).NotTo(o.HaveOccurred(), "could not read the cluster's platform type")
 		platformtype := strings.ToLower(strings.TrimSpace(infraOutput))
 
 		platforms := map[string]bool{
@@ -96,8 +107,8 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 		}
 	})
 
-	// author:hongli
-	g.It("Critical-41025-support to deploy ipfailover [Serial]", ote.Informing(), func() {
+	//Author:hongli
+	g.It("support to deploy ipfailover [Serial]", g.Label("OCP-41025"), ote.Informing(), func() {
 		customTemp := ipfailoverTemplatePath()
 		var (
 			ipf = ipfailoverDescription{
@@ -120,8 +131,8 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 		ensureIpfailoverMasterBackup(oc, ipf.namespace, podName)
 	})
 
-	// author:mjoseph
-	g.It("High-41027-pod and service automatically switched over to standby when master fails [Serial][Disruptive]", ote.Informing(), func() {
+	//Author:mjoseph
+	g.It("pod and service automatically switched over to standby when master fails [Serial][Disruptive]", g.Label("OCP-41027"), ote.Informing(), func() {
 		customTemp := ipfailoverTemplatePath()
 		var (
 			ipf = ipfailoverDescription{
@@ -178,8 +189,8 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 		waitForPrimaryPod(oc, ipf.namespace, newMasterNode, virtualIP)
 	})
 
-	// author:mjoseph
-	g.It("High-41028-ipfailover configuration can be customized by ENV [Serial]", ote.Informing(), func() {
+	//Author:mjoseph
+	g.It("ipfailover configuration can be customized by ENV [Serial]", g.Label("OCP-41028"), ote.Informing(), func() {
 		customTemp := ipfailoverTemplatePath()
 		var (
 			ipf = ipfailoverDescription{
@@ -241,15 +252,16 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 		o.Expect(result).To(o.ContainSubstring("OPENSHIFT_HA_VIRTUAL_IPS:        " + virtualIP))
 	})
 
-	// author:mjoseph
-	g.It("High-41029-ipfailover can support up to a maximum of 255 VIPs for the entire cluster [Serial]", ote.Informing(), func() {
-		// Get platform type using oc command instead of compat_otp
+	//Author:mjoseph
+	g.It("ipfailover can support up to a maximum of 255 VIPs for the entire cluster [Serial]", g.Label("OCP-41029"), ote.Informing(), func() {
+		// BeforeEach already asserted this same read succeeds, so failing hard
+		// here too keeps a transient flake between the two calls from running
+		// the test on Nutanix instead of correctly skipping it, which silently
+		// proceeding on any error would have allowed.
 		infraOutput, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.type}").Output()
-		if err == nil {
-			platformtype := strings.ToLower(strings.TrimSpace(infraOutput))
-			if platformtype == "nutanix" {
-				g.Skip("This test will not work for Nutanix")
-			}
+		o.Expect(err).NotTo(o.HaveOccurred(), "could not read the cluster's platform type")
+		if strings.ToLower(strings.TrimSpace(infraOutput)) == "nutanix" {
+			g.Skip("This test will not work for Nutanix")
 		}
 		customTemp := ipfailoverTemplatePath()
 		var (
@@ -284,8 +296,8 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 		o.Expect(checkenv).To(o.ContainSubstring("OPENSHIFT_HA_VIP_GROUPS=238"))
 	})
 
-	// author:mjoseph
-	g.It("Critical-41030-preemption strategy for keepalived ipfailover [Serial][Disruptive]", ote.Informing(), func() {
+	//Author:mjoseph
+	g.It("preemption strategy for keepalived ipfailover [Serial][Disruptive]", g.Label("OCP-41030"), ote.Informing(), func() {
 		customTemp := ipfailoverTemplatePath()
 		var (
 			ipf = ipfailoverDescription{
@@ -357,8 +369,8 @@ var _ = g.Describe("[OTP][sig-network-edge] Network_Edge", func() {
 		klog.Infof("After preempt delay, pod %v is the master holding VIP %v", actualMaster, virtualIP)
 	})
 
-	// author:mjoseph
-	g.It("High-49214-Excluding the existing VRRP cluster ID from ipfailover deployments [Serial]", ote.Informing(), func() {
+	//Author:mjoseph
+	g.It("Excluding the existing VRRP cluster ID from ipfailover deployments [Serial]", g.Label("OCP-49214"), ote.Informing(), func() {
 		customTemp := ipfailoverTemplatePath()
 		var (
 			ipf = ipfailoverDescription{
