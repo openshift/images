@@ -18,6 +18,7 @@ RUN INSTALL_PKGS=" \
 
 # OKD-specific changes
 RUN source /etc/os-release && [ "${ID}" != "centos" ] && exit 0; \
+    dnf config-manager --set-enabled rt && \
     wget --no-verbose \
         --output-document=/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-NFV \
         https://www.centos.org/keys/RPM-GPG-KEY-CentOS-SIG-NFV && \
