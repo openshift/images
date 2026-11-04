@@ -105,7 +105,6 @@ func describePodResource(oc *exutil.CLI, podName, namespace string) string {
 }
 
 func getImagePullSpecFromPayload(oc *exutil.CLI, image string) string {
-	var pullspec string
 	// Use a temporary directory rather than a path relative to the working
 	// directory: this code runs from a test extension binary whose working
 	// directory is not guaranteed to be writable.
@@ -115,10 +114,8 @@ func getImagePullSpecFromPayload(oc *exutil.CLI, image string) string {
 	dockerconfigjsonpath := filepath.Join(indexTmpPath, ".dockerconfigjson")
 	_, err = oc.AsAdmin().WithoutNamespace().Run("extract").Args("secret/pull-secret", "-n", "openshift-config", "--confirm", "--to="+indexTmpPath).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
-	pullspec, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("release", "info", "--image-for="+image, "-a", dockerconfigjsonpath).Output()
-	if err != nil {
-		g.Skip("Skipping as failed to get image pull spec from the payload")
-	}
+	pullspec, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("release", "info", "--image-for="+image, "-a", dockerconfigjsonpath).Output()
+	o.Expect(err).NotTo(o.HaveOccurred(), "could not get pull spec for image %q from the release payload", image)
 	e2e.Logf("the pull spec of image %v is: %v", image, pullspec)
 	return pullspec
 }
