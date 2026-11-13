@@ -1,0 +1,38 @@
+FROM registry.access.redhat.com/ubi9/ubi:latest AS builder
+
+# Generate trust before removing runtime dependencies; preserve OS identification
+# files for scanners without retaining the release package.
+RUN mkdir -p /rootfs /tmp/release-files && \
+    dnf --installroot=/rootfs --releasever=9 \
+        --disablerepo='*' \
+        --enablerepo=ubi-9-baseos-rpms --enablerepo=ubi-9-appstream-rpms \
+        --setopt=gpgcheck=1 \
+        --setopt=install_weak_deps=False --setopt=tsflags=nodocs \
+        install -y filesystem setup tzdata ca-certificates && \
+    cp -a /rootfs/etc/redhat-release /rootfs/usr/lib/os-release /tmp/release-files/ && \
+    cp -a /rootfs/etc/os-release /tmp/release-files/etc-os-release && \
+    rpm --root /rootfs -qa --qf '%{NAME}\n' | \
+        grep -Ev '^(filesystem|setup|tzdata|ca-certificates|gpg-pubkey)$' \
+        > /tmp/remove-packages && \
+    xargs -r rpm --root /rootfs -e --nodeps --noscripts < /tmp/remove-packages && \
+    cp -a /tmp/release-files/etc-os-release /rootfs/etc/os-release && \
+    cp -a /tmp/release-files/redhat-release /rootfs/etc/redhat-release && \
+    cp -a /tmp/release-files/os-release /rootfs/usr/lib/os-release && \
+    rm -rf /rootfs/var/cache/dnf /rootfs/var/lib/dnf \
+        /rootfs/var/log/* /rootfs/usr/share/licenses && \
+    test ! -e /rootfs/bin/bash && \
+    test ! -e /rootfs/lib64/libc.so.6 && \
+    test -s /rootfs/etc/redhat-release && \
+    test -s /rootfs/usr/lib/os-release && \
+    test -s /rootfs/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+
+FROM scratch
+COPY --from=builder /rootfs/ /
+
+LABEL cpe="cpe:/a:redhat:enterprise_linux:9::appstream" \
+      vendor="Red Hat, Inc." \
+      distribution-scope="public" \
+      com.redhat.license_terms="https://www.redhat.com/en/about/red-hat-end-user-license-agreements#UBI" \
+      io.openshift.tags="openshift,base,static,rhel9" \
+      io.k8s.display-name="OpenShift Static Base" \
+      io.k8s.description="This is the base image from which all static OpenShift images inherit."
