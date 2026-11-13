@@ -1,0 +1,4 @@
+FROM registry.access.redhat.com/hi/static:latest
+
+LABEL io.k8s.display-name="OpenShift Static Base" \
+      io.k8s.description="This is the base image from which all static OpenShift images inherit."
